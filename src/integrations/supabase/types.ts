@@ -86,6 +86,7 @@ export type Database = {
           longitude: number
           name: string
           status: string
+          zone: string
         }
         Insert: {
           created_at?: string
@@ -94,6 +95,7 @@ export type Database = {
           longitude: number
           name: string
           status?: string
+          zone?: string
         }
         Update: {
           created_at?: string
@@ -102,6 +104,7 @@ export type Database = {
           longitude?: number
           name?: string
           status?: string
+          zone?: string
         }
         Relationships: []
       }
@@ -298,6 +301,7 @@ export type Database = {
           longitude: number | null
           name: string | null
           total_vehicle_count: number | null
+          zone: string | null
         }
         Relationships: []
       }

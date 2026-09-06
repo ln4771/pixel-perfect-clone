@@ -14,10 +14,293 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cctv_analysis_log: {
+        Row: {
+          analysis_id: number
+          analyzed_at: string
+          camera_id: number
+          confidence_avg: number | null
+          frame_number: number | null
+          vehicles_detected: number
+        }
+        Insert: {
+          analysis_id?: number
+          analyzed_at?: string
+          camera_id: number
+          confidence_avg?: number | null
+          frame_number?: number | null
+          vehicles_detected: number
+        }
+        Update: {
+          analysis_id?: number
+          analyzed_at?: string
+          camera_id?: number
+          confidence_avg?: number | null
+          frame_number?: number | null
+          vehicles_detected?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cctv_analysis_log_camera_id_fkey"
+            columns: ["camera_id"]
+            isOneToOne: false
+            referencedRelation: "cctv_cameras"
+            referencedColumns: ["camera_id"]
+          },
+        ]
+      }
+      cctv_cameras: {
+        Row: {
+          camera_id: number
+          camera_name: string | null
+          road_id: number
+          status: string
+        }
+        Insert: {
+          camera_id?: number
+          camera_name?: string | null
+          road_id: number
+          status?: string
+        }
+        Update: {
+          camera_id?: number
+          camera_name?: string | null
+          road_id?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cctv_cameras_road_id_fkey"
+            columns: ["road_id"]
+            isOneToOne: false
+            referencedRelation: "roads"
+            referencedColumns: ["road_id"]
+          },
+        ]
+      }
+      junctions: {
+        Row: {
+          created_at: string
+          junction_id: number
+          latitude: number
+          longitude: number
+          name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          junction_id?: number
+          latitude: number
+          longitude: number
+          name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          junction_id?: number
+          latitude?: number
+          longitude?: number
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      roads: {
+        Row: {
+          direction: string
+          junction_id: number
+          max_capacity: number
+          road_id: number
+          road_name: string | null
+        }
+        Insert: {
+          direction: string
+          junction_id: number
+          max_capacity?: number
+          road_id?: number
+          road_name?: string | null
+        }
+        Update: {
+          direction?: string
+          junction_id?: number
+          max_capacity?: number
+          road_id?: number
+          road_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roads_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "junctions"
+            referencedColumns: ["junction_id"]
+          },
+          {
+            foreignKeyName: "roads_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "v_junction_congestion"
+            referencedColumns: ["junction_id"]
+          },
+        ]
+      }
+      signal_history: {
+        Row: {
+          allocated_green_sec: number
+          baseline_fixed_sec: number
+          cycle_number: number | null
+          decided_at: string
+          estimated_wait_saved_sec: number
+          history_id: number
+          junction_id: number
+          road_id: number
+          vehicle_count_at_decision: number | null
+        }
+        Insert: {
+          allocated_green_sec: number
+          baseline_fixed_sec?: number
+          cycle_number?: number | null
+          decided_at?: string
+          estimated_wait_saved_sec?: number
+          history_id?: number
+          junction_id: number
+          road_id: number
+          vehicle_count_at_decision?: number | null
+        }
+        Update: {
+          allocated_green_sec?: number
+          baseline_fixed_sec?: number
+          cycle_number?: number | null
+          decided_at?: string
+          estimated_wait_saved_sec?: number
+          history_id?: number
+          junction_id?: number
+          road_id?: number
+          vehicle_count_at_decision?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signal_history_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "junctions"
+            referencedColumns: ["junction_id"]
+          },
+          {
+            foreignKeyName: "signal_history_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "v_junction_congestion"
+            referencedColumns: ["junction_id"]
+          },
+          {
+            foreignKeyName: "signal_history_road_id_fkey"
+            columns: ["road_id"]
+            isOneToOne: false
+            referencedRelation: "roads"
+            referencedColumns: ["road_id"]
+          },
+        ]
+      }
+      signal_timings: {
+        Row: {
+          green_duration_sec: number
+          is_currently_green: boolean
+          junction_id: number
+          road_id: number
+          timing_id: number
+          timing_mode: string
+          updated_at: string
+        }
+        Insert: {
+          green_duration_sec?: number
+          is_currently_green?: boolean
+          junction_id: number
+          road_id: number
+          timing_id?: number
+          timing_mode?: string
+          updated_at?: string
+        }
+        Update: {
+          green_duration_sec?: number
+          is_currently_green?: boolean
+          junction_id?: number
+          road_id?: number
+          timing_id?: number
+          timing_mode?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signal_timings_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "junctions"
+            referencedColumns: ["junction_id"]
+          },
+          {
+            foreignKeyName: "signal_timings_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "v_junction_congestion"
+            referencedColumns: ["junction_id"]
+          },
+          {
+            foreignKeyName: "signal_timings_road_id_fkey"
+            columns: ["road_id"]
+            isOneToOne: true
+            referencedRelation: "roads"
+            referencedColumns: ["road_id"]
+          },
+        ]
+      }
+      vehicle_counts: {
+        Row: {
+          reading_id: number
+          recorded_at: string
+          road_id: number
+          source: string
+          vehicle_count: number
+        }
+        Insert: {
+          reading_id?: number
+          recorded_at?: string
+          road_id: number
+          source?: string
+          vehicle_count: number
+        }
+        Update: {
+          reading_id?: number
+          recorded_at?: string
+          road_id?: number
+          source?: string
+          vehicle_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_counts_road_id_fkey"
+            columns: ["road_id"]
+            isOneToOne: false
+            referencedRelation: "roads"
+            referencedColumns: ["road_id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      v_junction_congestion: {
+        Row: {
+          avg_vehicle_count: number | null
+          congestion_level: string | null
+          junction_id: number | null
+          last_reading_at: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          total_vehicle_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

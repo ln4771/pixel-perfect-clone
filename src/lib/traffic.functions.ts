@@ -95,15 +95,23 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     byJunction.set(road.junction_id, list);
   }
 
-  const historyRows: Array<Record<string, number>> = [];
+  const historyRows: Array<{
+    junction_id: number;
+    road_id: number;
+    vehicle_count_at_decision: number;
+    allocated_green_sec: number;
+    baseline_fixed_sec: number;
+    estimated_wait_saved_sec: number;
+    cycle_number: number;
+  }> = [];
   const timingUpdates: Array<{ road_id: number; green: number; green_now: boolean }> = [];
 
   for (const [junctionId, junctionRoads] of byJunction) {
     const total = junctionRoads.reduce((sum, r) => sum + (counts.get(r.road_id) ?? 0), 0) || 1;
     const cycle = (cycleByJunction.get(junctionId) ?? 0) + 1;
-    let busiest = junctionRoads[0];
+    let busiestId = junctionRoads[0]?.road_id ?? -1;
     for (const road of junctionRoads) {
-      if ((counts.get(road.road_id) ?? 0) > (counts.get(busiest.road_id) ?? 0)) busiest = road;
+      if ((counts.get(road.road_id) ?? 0) > (counts.get(busiestId) ?? 0)) busiestId = road.road_id;
     }
 
     for (const road of junctionRoads) {
@@ -113,7 +121,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
       timingUpdates.push({
         road_id: road.road_id,
         green,
-        green_now: road.road_id === busiest.road_id,
+        green_now: road.road_id === busiestId,
       });
       historyRows.push({
         junction_id: junctionId,
@@ -162,7 +170,12 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
       if (!frameByCamera.has(row.camera_id)) frameByCamera.set(row.camera_id, row.frame_number ?? 0);
     }
 
-    const analysisRows: Array<Record<string, number>> = [];
+    const analysisRows: Array<{
+      camera_id: number;
+      frame_number: number;
+      vehicles_detected: number;
+      confidence_avg: number;
+    }> = [];
     const cctvCounts: Array<{ road_id: number; vehicle_count: number; source: string }> = [];
     for (const camera of (cameras ?? []) as Array<{ camera_id: number; road_id: number }>) {
       const sensorCount = counts.get(camera.road_id) ?? 20;

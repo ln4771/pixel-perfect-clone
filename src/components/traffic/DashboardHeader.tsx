@@ -1,0 +1,52 @@
+import { RefreshCw, TrafficCone } from "lucide-react";
+
+function timeAgo(iso: string | null) {
+  if (!iso) return "waiting for data";
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  return `${Math.round(minutes / 60)} h ago`;
+}
+
+export function DashboardHeader({
+  lastUpdated,
+  onRecalculate,
+  busy,
+}: {
+  lastUpdated: string | null;
+  onRecalculate: () => void;
+  busy: boolean;
+}) {
+  return (
+    <header className="sticky top-0 z-[600] flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:px-6">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 text-primary">
+          <TrafficCone className="h-4.5 w-4.5" />
+        </span>
+        <div>
+          <h1 className="text-base font-semibold leading-tight md:text-lg">
+            Smart Traffic Management
+          </h1>
+          <p className="meta-label">Adaptive signal control · Chennai South corridor</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="text-right">
+          <p className="meta-label">Last updated</p>
+          <p className="numeric text-xs text-foreground transition-data">{timeAgo(lastUpdated)}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onRecalculate}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-medium text-primary transition-data hover:bg-primary/20 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} />
+          Recalculate now
+        </button>
+      </div>
+    </header>
+  );
+}

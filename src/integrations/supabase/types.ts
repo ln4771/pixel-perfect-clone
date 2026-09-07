@@ -108,6 +108,131 @@ export type Database = {
         }
         Relationships: []
       }
+      model_accuracy: {
+        Row: {
+          abs_error: number
+          accuracy_id: number
+          actual_queue: number
+          junction_id: number
+          predicted_queue: number
+          recorded_at: string
+          road_id: number
+        }
+        Insert: {
+          abs_error: number
+          accuracy_id?: number
+          actual_queue: number
+          junction_id: number
+          predicted_queue: number
+          recorded_at?: string
+          road_id: number
+        }
+        Update: {
+          abs_error?: number
+          accuracy_id?: number
+          actual_queue?: number
+          junction_id?: number
+          predicted_queue?: number
+          recorded_at?: string
+          road_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_accuracy_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "junctions"
+            referencedColumns: ["junction_id"]
+          },
+          {
+            foreignKeyName: "model_accuracy_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "v_junction_congestion"
+            referencedColumns: ["junction_id"]
+          },
+          {
+            foreignKeyName: "model_accuracy_road_id_fkey"
+            columns: ["road_id"]
+            isOneToOne: false
+            referencedRelation: "roads"
+            referencedColumns: ["road_id"]
+          },
+        ]
+      }
+      model_road_state: {
+        Row: {
+          arrival_rate_vph: number
+          cycle_length_sec: number
+          degree_saturation: number
+          flow_ratio: number
+          green_sec: number
+          junction_id: number
+          predicted_delay_adaptive_sec: number
+          predicted_delay_fixed_sec: number
+          predicted_queue_next: number
+          queue_clears: boolean
+          queue_now: number
+          road_id: number
+          saturation_flow_vph: number
+          updated_at: string
+        }
+        Insert: {
+          arrival_rate_vph?: number
+          cycle_length_sec?: number
+          degree_saturation?: number
+          flow_ratio?: number
+          green_sec?: number
+          junction_id: number
+          predicted_delay_adaptive_sec?: number
+          predicted_delay_fixed_sec?: number
+          predicted_queue_next?: number
+          queue_clears?: boolean
+          queue_now?: number
+          road_id: number
+          saturation_flow_vph?: number
+          updated_at?: string
+        }
+        Update: {
+          arrival_rate_vph?: number
+          cycle_length_sec?: number
+          degree_saturation?: number
+          flow_ratio?: number
+          green_sec?: number
+          junction_id?: number
+          predicted_delay_adaptive_sec?: number
+          predicted_delay_fixed_sec?: number
+          predicted_queue_next?: number
+          queue_clears?: boolean
+          queue_now?: number
+          road_id?: number
+          saturation_flow_vph?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_road_state_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "junctions"
+            referencedColumns: ["junction_id"]
+          },
+          {
+            foreignKeyName: "model_road_state_junction_id_fkey"
+            columns: ["junction_id"]
+            isOneToOne: false
+            referencedRelation: "v_junction_congestion"
+            referencedColumns: ["junction_id"]
+          },
+          {
+            foreignKeyName: "model_road_state_road_id_fkey"
+            columns: ["road_id"]
+            isOneToOne: true
+            referencedRelation: "roads"
+            referencedColumns: ["road_id"]
+          },
+        ]
+      }
       roads: {
         Row: {
           direction: string
@@ -150,35 +275,56 @@ export type Database = {
       signal_history: {
         Row: {
           allocated_green_sec: number
+          arrival_rate_vph: number | null
           baseline_fixed_sec: number
+          cycle_length_sec: number | null
           cycle_number: number | null
           decided_at: string
+          degree_saturation: number | null
           estimated_wait_saved_sec: number
           history_id: number
           junction_id: number
+          predicted_delay_adaptive_sec: number | null
+          predicted_delay_fixed_sec: number | null
+          predicted_queue_next: number | null
           road_id: number
+          saturation_flow_vph: number | null
           vehicle_count_at_decision: number | null
         }
         Insert: {
           allocated_green_sec: number
+          arrival_rate_vph?: number | null
           baseline_fixed_sec?: number
+          cycle_length_sec?: number | null
           cycle_number?: number | null
           decided_at?: string
+          degree_saturation?: number | null
           estimated_wait_saved_sec?: number
           history_id?: number
           junction_id: number
+          predicted_delay_adaptive_sec?: number | null
+          predicted_delay_fixed_sec?: number | null
+          predicted_queue_next?: number | null
           road_id: number
+          saturation_flow_vph?: number | null
           vehicle_count_at_decision?: number | null
         }
         Update: {
           allocated_green_sec?: number
+          arrival_rate_vph?: number | null
           baseline_fixed_sec?: number
+          cycle_length_sec?: number | null
           cycle_number?: number | null
           decided_at?: string
+          degree_saturation?: number | null
           estimated_wait_saved_sec?: number
           history_id?: number
           junction_id?: number
+          predicted_delay_adaptive_sec?: number | null
+          predicted_delay_fixed_sec?: number | null
+          predicted_queue_next?: number | null
           road_id?: number
+          saturation_flow_vph?: number | null
           vehicle_count_at_decision?: number | null
         }
         Relationships: [

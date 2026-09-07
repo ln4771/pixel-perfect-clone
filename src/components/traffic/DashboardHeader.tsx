@@ -28,7 +28,7 @@ export function DashboardHeader({
           <h1 className="text-base font-semibold leading-tight md:text-lg">
             Smart Traffic Management
           </h1>
-          <p className="meta-label">Adaptive signal control · Chennai South corridor</p>
+          <p className="meta-label">Adaptive signal control · Chennai city network</p>
         </div>
       </div>
 

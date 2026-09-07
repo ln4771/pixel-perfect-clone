@@ -51,7 +51,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     .from("vehicle_counts")
     .select("road_id, vehicle_count, recorded_at")
     .order("recorded_at", { ascending: false })
-    .limit(400);
+    .limit(1600);
 
   const previous = new Map<number, number>();
   for (const row of (prevCounts ?? []) as Array<{ road_id: number; vehicle_count: number }>) {
@@ -81,7 +81,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     .from("signal_history")
     .select("junction_id, cycle_number")
     .order("history_id", { ascending: false })
-    .limit(600);
+    .limit(1600);
   const cycleByJunction = new Map<number, number>();
   for (const row of (lastCycles ?? []) as Array<{ junction_id: number; cycle_number: number }>) {
     const current = cycleByJunction.get(row.junction_id) ?? 0;
@@ -135,23 +135,42 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     }
   }
 
-  await Promise.all(
-    timingUpdates.map((update) =>
-      supabaseAdmin
-        .from("signal_timings")
-        .update({
-          green_duration_sec: update.green,
-          is_currently_green: update.green_now,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("road_id", update.road_id),
+  // Batched timing writes: one upsert instead of one request per approach.
+  const { data: timingRows } = await supabaseAdmin
+    .from("signal_timings")
+    .select("timing_id, road_id, junction_id");
+  const timingByRoad = new Map(
+    ((timingRows ?? []) as Array<{ timing_id: number; road_id: number; junction_id: number }>).map(
+      (t) => [t.road_id, t],
     ),
   );
+  const stamp = new Date().toISOString();
+  const upsertRows = timingUpdates
+    .map((update) => {
+      const existing = timingByRoad.get(update.road_id);
+      if (!existing) return null;
+      return {
+        timing_id: existing.timing_id,
+        junction_id: existing.junction_id,
+        road_id: update.road_id,
+        timing_mode: "ADAPTIVE",
+        green_duration_sec: update.green,
+        is_currently_green: update.green_now,
+        updated_at: stamp,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
+
+  for (let i = 0; i < upsertRows.length; i += 200) {
+    await supabaseAdmin.from("signal_timings").upsert(upsertRows.slice(i, i + 200), {
+      onConflict: "timing_id",
+    });
+  }
 
   await supabaseAdmin.from("signal_history").insert(historyRows);
 
   // Simulated CCTV vehicle detection on a couple of random approaches
-  const cctvRoads = roadRows.filter(() => Math.random() < 0.25).slice(0, 6);
+  const cctvRoads = roadRows.filter(() => Math.random() < 0.25).slice(0, 24);
   if (cctvRoads.length > 0) {
     const { data: cameras } = await supabaseAdmin
       .from("cctv_cameras")
@@ -197,6 +216,14 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
       await supabaseAdmin.from("vehicle_counts").insert(cctvCounts);
     }
   }
+
+  // Keep the rolling window small so the city-wide network stays fast.
+  const cutoff = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+  await Promise.all([
+    supabaseAdmin.from("vehicle_counts").delete().lt("recorded_at", cutoff(25)),
+    supabaseAdmin.from("cctv_analysis_log").delete().lt("analyzed_at", cutoff(60)),
+    supabaseAdmin.from("signal_history").delete().lt("decided_at", cutoff(90)),
+  ]);
 
   return { ok: true, cycles: byJunction.size, at: new Date().toISOString() };
 });

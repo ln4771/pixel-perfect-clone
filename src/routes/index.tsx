@@ -6,6 +6,7 @@ import { Activity, Car, Gauge, MapPin } from "lucide-react";
 
 import { DashboardHeader } from "@/components/traffic/DashboardHeader";
 import { MapPanel } from "@/components/traffic/MapPanel";
+import { JunctionList } from "@/components/traffic/JunctionList";
 import { RoadList } from "@/components/traffic/RoadList";
 import { CycleChart } from "@/components/traffic/CycleChart";
 import { CctvPanel } from "@/components/traffic/CctvPanel";
@@ -44,11 +45,11 @@ export const Route = createFileRoute("/")({
 
 /** Shown only if the backend is briefly unreachable, so the UI never looks dead. */
 const FALLBACK_JUNCTIONS: JunctionSummary[] = [
-  { junction_id: -1, name: "Tambaram Junction", latitude: 12.9249, longitude: 80.1, avg_vehicle_count: 52, total_vehicle_count: 208, congestion_level: "MODERATE", last_reading_at: null },
-  { junction_id: -2, name: "Vandalur Junction", latitude: 12.893, longitude: 80.081, avg_vehicle_count: 68, total_vehicle_count: 272, congestion_level: "HIGH", last_reading_at: null },
-  { junction_id: -3, name: "Chengalpattu Bypass Junction", latitude: 12.692, longitude: 79.977, avg_vehicle_count: 24, total_vehicle_count: 96, congestion_level: "LOW", last_reading_at: null },
-  { junction_id: -4, name: "SRM Main Gate Junction", latitude: 12.823, longitude: 80.045, avg_vehicle_count: 41, total_vehicle_count: 164, congestion_level: "MODERATE", last_reading_at: null },
-  { junction_id: -5, name: "Guduvancheri Junction", latitude: 12.842, longitude: 80.06, avg_vehicle_count: 33, total_vehicle_count: 132, congestion_level: "MODERATE", last_reading_at: null },
+  { junction_id: -1, name: "Tambaram Junction", zone: "GST Corridor", latitude: 12.9249, longitude: 80.1, avg_vehicle_count: 52, total_vehicle_count: 208, congestion_level: "MODERATE", last_reading_at: null },
+  { junction_id: -2, name: "Vandalur Junction", zone: "GST Corridor", latitude: 12.893, longitude: 80.081, avg_vehicle_count: 68, total_vehicle_count: 272, congestion_level: "HIGH", last_reading_at: null },
+  { junction_id: -3, name: "Chengalpattu Bypass Junction", zone: "GST Corridor", latitude: 12.692, longitude: 79.977, avg_vehicle_count: 24, total_vehicle_count: 96, congestion_level: "LOW", last_reading_at: null },
+  { junction_id: -4, name: "SRM Main Gate Junction", zone: "GST Corridor", latitude: 12.823, longitude: 80.045, avg_vehicle_count: 41, total_vehicle_count: 164, congestion_level: "MODERATE", last_reading_at: null },
+  { junction_id: -5, name: "Guduvancheri Junction", zone: "GST Corridor", latitude: 12.842, longitude: 80.06, avg_vehicle_count: 33, total_vehicle_count: 132, congestion_level: "MODERATE", last_reading_at: null },
 ];
 
 const LEVEL_STYLE: Record<string, string> = {
@@ -140,12 +141,22 @@ function Dashboard() {
   const roads = roadsQuery.data ?? [];
   const networkVehicles = junctions.reduce((sum, j) => sum + j.total_vehicle_count, 0);
   const highCount = junctions.filter((j) => j.congestion_level === "HIGH").length;
+  const totalJunctions = junctions.length;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <DashboardHeader lastUpdated={lastUpdated} onRecalculate={() => void recalculate()} busy={busy} />
 
-      <div className="grid flex-1 gap-4 p-4 md:px-6 lg:grid-cols-[1.35fr_1fr] lg:gap-0 lg:p-0">
+      <div className="grid flex-1 gap-4 p-4 md:px-6 lg:grid-cols-[260px_1.2fr_1fr] lg:gap-0 lg:p-0">
+        <div className="lg:h-[calc(100vh-65px)] lg:sticky lg:top-[65px] lg:border-r lg:border-border lg:p-3">
+          <JunctionList
+            junctions={junctions}
+            selectedId={activeId}
+            onSelect={setSelectedId}
+            loading={junctionsQuery.isLoading}
+          />
+        </div>
+
         <div className="lg:h-[calc(100vh-65px)] lg:sticky lg:top-[65px]">
           <MapPanel
             junctions={junctions}
@@ -164,6 +175,7 @@ function Dashboard() {
                   <MapPin className="h-4 w-4 text-primary" />
                   {selected?.name ?? "—"}
                 </h2>
+                <p className="text-xs text-muted-foreground">{selected?.zone ?? ""} zone</p>
               </div>
               <span
                 className={`rounded-full border px-3 py-1 text-[11px] font-medium tracking-wide transition-data ${
@@ -174,9 +186,10 @@ function Dashboard() {
               </span>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 { label: "Avg / approach", value: selected?.avg_vehicle_count ?? 0, icon: Gauge },
+                { label: "Signals in city", value: totalJunctions, icon: MapPin },
                 { label: "Network vehicles", value: networkVehicles, icon: Car },
                 { label: "Junctions at peak", value: highCount, icon: Activity },
               ].map((stat) => (

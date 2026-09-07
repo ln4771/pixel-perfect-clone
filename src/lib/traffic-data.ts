@@ -5,6 +5,7 @@ export type CongestionLevel = "LOW" | "MODERATE" | "HIGH";
 export type JunctionSummary = {
   junction_id: number;
   name: string;
+  zone: string;
   latitude: number;
   longitude: number;
   avg_vehicle_count: number;
@@ -52,6 +53,7 @@ export async function fetchJunctions(): Promise<JunctionSummary[]> {
   return (data ?? []).map((row: Record<string, unknown>) => ({
     junction_id: Number(row['junction_id']),
     name: String(row['name']),
+    zone: String(row['zone'] ?? "Central"),
     latitude: Number(row['latitude']),
     longitude: Number(row['longitude']),
     avg_vehicle_count: Number(row['avg_vehicle_count'] ?? 0),

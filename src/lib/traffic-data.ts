@@ -32,7 +32,40 @@ export type CyclePoint = {
   adaptive_sec: number;
   fixed_sec: number;
   saved_sec: number;
+  /** Modelled average wait per vehicle under the adaptive plan (s). */
+  delay_adaptive: number;
+  /** Modelled average wait per vehicle under a fixed 30s/120s plan (s). */
+  delay_fixed: number;
 };
+
+export type ApproachModelState = {
+  road_id: number;
+  direction: string;
+  arrival_rate_vph: number;
+  saturation_flow_vph: number;
+  degree_saturation: number;
+  green_sec: number;
+  cycle_length_sec: number;
+  queue_now: number;
+  predicted_queue_next: number;
+  predicted_delay_adaptive_sec: number;
+  predicted_delay_fixed_sec: number;
+  queue_clears: boolean;
+};
+
+export type ModelPerformance = {
+  /** Mean absolute error of the queue prediction, vehicles. */
+  meanAbsError: number;
+  /** Share of predictions within 3 vehicles of reality. */
+  hitRate: number;
+  samples: number;
+  /** Flow-weighted average wait per vehicle across the whole network. */
+  networkDelayAdaptive: number;
+  networkDelayFixed: number;
+  /** Approaches predicted to be over capacity (x > 1). */
+  saturatedApproaches: number;
+};
+
 
 export type CctvPoint = {
   frame_number: number;

@@ -32,7 +32,40 @@ export type CyclePoint = {
   adaptive_sec: number;
   fixed_sec: number;
   saved_sec: number;
+  /** Modelled average wait per vehicle under the adaptive plan (s). */
+  delay_adaptive: number;
+  /** Modelled average wait per vehicle under a fixed 30s/120s plan (s). */
+  delay_fixed: number;
 };
+
+export type ApproachModelState = {
+  road_id: number;
+  direction: string;
+  arrival_rate_vph: number;
+  saturation_flow_vph: number;
+  degree_saturation: number;
+  green_sec: number;
+  cycle_length_sec: number;
+  queue_now: number;
+  predicted_queue_next: number;
+  predicted_delay_adaptive_sec: number;
+  predicted_delay_fixed_sec: number;
+  queue_clears: boolean;
+};
+
+export type ModelPerformance = {
+  /** Mean absolute error of the queue prediction, vehicles. */
+  meanAbsError: number;
+  /** Share of predictions within 3 vehicles of reality. */
+  hitRate: number;
+  samples: number;
+  /** Flow-weighted average wait per vehicle across the whole network. */
+  networkDelayAdaptive: number;
+  networkDelayFixed: number;
+  /** Approaches predicted to be over capacity (x > 1). */
+  saturatedApproaches: number;
+};
+
 
 export type CctvPoint = {
   frame_number: number;
@@ -123,13 +156,15 @@ export async function fetchRoadStates(junctionId: number): Promise<RoadState[]> 
 export async function fetchCycleComparison(junctionId: number): Promise<CyclePoint[]> {
   const { data, error } = await supabase
     .from("signal_history")
-    .select("cycle_number, allocated_green_sec, baseline_fixed_sec, estimated_wait_saved_sec")
+    .select(
+      "cycle_number, allocated_green_sec, baseline_fixed_sec, estimated_wait_saved_sec, predicted_delay_adaptive_sec, predicted_delay_fixed_sec",
+    )
     .eq("junction_id", junctionId)
     .order("history_id", { ascending: false })
     .limit(120);
   if (error) throw new Error(error.message);
 
-  const byCycle = new Map<number, CyclePoint>();
+  const byCycle = new Map<number, CyclePoint & { n: number }>();
   for (const row of (data ?? []) as Array<Record<string, number>>) {
     const cycle = Number(row['cycle_number'] ?? 0);
     const point = byCycle.get(cycle) ?? {
@@ -137,17 +172,104 @@ export async function fetchCycleComparison(junctionId: number): Promise<CyclePoi
       adaptive_sec: 0,
       fixed_sec: 0,
       saved_sec: 0,
+      delay_adaptive: 0,
+      delay_fixed: 0,
+      n: 0,
     };
     point.adaptive_sec += Number(row['allocated_green_sec'] ?? 0);
     point.fixed_sec += Number(row['baseline_fixed_sec'] ?? 30);
     point.saved_sec += Number(row['estimated_wait_saved_sec'] ?? 0);
+    point.delay_adaptive += Number(row['predicted_delay_adaptive_sec'] ?? 0);
+    point.delay_fixed += Number(row['predicted_delay_fixed_sec'] ?? 0);
+    point.n += 1;
     byCycle.set(cycle, point);
   }
 
   return Array.from(byCycle.values())
     .sort((a, b) => a.cycle_number - b.cycle_number)
-    .slice(-15);
+    .slice(-15)
+    .map(({ n, ...point }) => ({
+      ...point,
+      delay_adaptive: Number((point.delay_adaptive / Math.max(n, 1)).toFixed(1)),
+      delay_fixed: Number((point.delay_fixed / Math.max(n, 1)).toFixed(1)),
+    }));
 }
+
+export async function fetchJunctionModel(junctionId: number): Promise<ApproachModelState[]> {
+  const [{ data: roads }, { data: state, error }] = await Promise.all([
+    supabase.from("roads").select("road_id, direction").eq("junction_id", junctionId),
+    supabase.from("model_road_state").select("*").eq("junction_id", junctionId),
+  ]);
+  if (error) throw new Error(error.message);
+  const dirByRoad = new Map(
+    ((roads ?? []) as Array<{ road_id: number; direction: string }>).map((r) => [
+      r.road_id,
+      r.direction,
+    ]),
+  );
+
+  return ((state ?? []) as Array<Record<string, unknown>>)
+    .map((row) => ({
+      road_id: Number(row['road_id']),
+      direction: dirByRoad.get(Number(row['road_id'])) ?? "—",
+      arrival_rate_vph: Number(row['arrival_rate_vph'] ?? 0),
+      saturation_flow_vph: Number(row['saturation_flow_vph'] ?? 0),
+      degree_saturation: Number(row['degree_saturation'] ?? 0),
+      green_sec: Number(row['green_sec'] ?? 0),
+      cycle_length_sec: Number(row['cycle_length_sec'] ?? 0),
+      queue_now: Number(row['queue_now'] ?? 0),
+      predicted_queue_next: Number(row['predicted_queue_next'] ?? 0),
+      predicted_delay_adaptive_sec: Number(row['predicted_delay_adaptive_sec'] ?? 0),
+      predicted_delay_fixed_sec: Number(row['predicted_delay_fixed_sec'] ?? 0),
+      queue_clears: Boolean(row['queue_clears']),
+    }))
+    .sort((a, b) => DIRECTION_ORDER.indexOf(a.direction) - DIRECTION_ORDER.indexOf(b.direction));
+}
+
+export async function fetchModelPerformance(): Promise<ModelPerformance> {
+  const [{ data: accuracy }, { data: state }] = await Promise.all([
+    supabase
+      .from("model_accuracy")
+      .select("abs_error")
+      .order("recorded_at", { ascending: false })
+      .limit(1500),
+    supabase
+      .from("model_road_state")
+      .select(
+        "arrival_rate_vph, degree_saturation, predicted_delay_adaptive_sec, predicted_delay_fixed_sec",
+      ),
+  ]);
+
+  const errors = ((accuracy ?? []) as Array<{ abs_error: number }>).map((r) =>
+    Number(r.abs_error ?? 0),
+  );
+  const samples = errors.length;
+  const meanAbsError = samples > 0 ? errors.reduce((a, b) => a + b, 0) / samples : 0;
+  const hitRate = samples > 0 ? errors.filter((e) => e <= 3).length / samples : 0;
+
+  const rows = (state ?? []) as Array<Record<string, number>>;
+  let flow = 0;
+  let adaptive = 0;
+  let fixed = 0;
+  let saturated = 0;
+  for (const row of rows) {
+    const w = Number(row['arrival_rate_vph'] ?? 0);
+    flow += w;
+    adaptive += Number(row['predicted_delay_adaptive_sec'] ?? 0) * w;
+    fixed += Number(row['predicted_delay_fixed_sec'] ?? 0) * w;
+    if (Number(row['degree_saturation'] ?? 0) > 1) saturated += 1;
+  }
+
+  return {
+    meanAbsError: Number(meanAbsError.toFixed(2)),
+    hitRate: Number(hitRate.toFixed(3)),
+    samples,
+    networkDelayAdaptive: Number((flow > 0 ? adaptive / flow : 0).toFixed(1)),
+    networkDelayFixed: Number((flow > 0 ? fixed / flow : 0).toFixed(1)),
+    saturatedApproaches: saturated,
+  };
+}
+
 
 export async function fetchTotalSecondsSaved(): Promise<number> {
   const { data, error } = await supabase

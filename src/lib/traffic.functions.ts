@@ -20,6 +20,7 @@ type ModelStateRow = {
   green_sec: number;
   cycle_length_sec: number;
   queue_now: number;
+  queue_exact: number;
   predicted_queue_next: number;
   updated_at: string;
 };
@@ -75,7 +76,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     supabaseAdmin
       .from("model_road_state")
       .select(
-        "road_id, arrival_rate_vph, green_sec, cycle_length_sec, queue_now, predicted_queue_next, updated_at",
+        "road_id, arrival_rate_vph, green_sec, cycle_length_sec, queue_now, queue_exact, predicted_queue_next, updated_at",
       ),
   ]);
 
@@ -89,6 +90,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
 
   // ---- 1. Advance the physical queues -------------------------------------
   const queues = new Map<number, number>();
+  const exactQueues = new Map<number, number>();
   const elapsedByRoad = new Map<number, number>();
   const sensorRows: Array<{ road_id: number; vehicle_count: number; source: string }> = [];
 
@@ -102,15 +104,17 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     // Demand for this window, in vehicles, with sensor-level noise.
     // Approach capacity is roughly saturation flow x green share (~450 veh/h),
     // so demand is scaled to sit either side of that depending on the hour.
-    const demandVph = baselineFor(road.road_id) * 8 * factor;
+    const demandVph = baselineFor(road.road_id) * 10 * factor;
     const arrivals = ((demandVph * (0.85 + Math.random() * 0.3)) / 3600) * elapsed;
 
     // Discharge achieved by the plan that was running during this window.
     const greenShare = state ? state.green_sec / Math.max(state.cycle_length_sec, 1) : FIXED_GREEN / FIXED_CYCLE;
     const served = (saturationFlow(road.max_capacity) / 3600) * greenShare * elapsed;
 
-    const prior = previousQueue.get(road.road_id) ?? arrivals;
-    const queue = clamp(Math.round(prior + arrivals - served), 0, 150);
+    const prior = state ? Number(state.queue_exact) : (previousQueue.get(road.road_id) ?? arrivals);
+    const exact = clamp(prior + arrivals - served, 0, 150);
+    const queue = Math.round(exact);
+    exactQueues.set(road.road_id, Number(exact.toFixed(2)));
     queues.set(road.road_id, queue);
     sensorRows.push({ road_id: road.road_id, vehicle_count: queue, source: "SIMULATED_SENSOR" });
   }
@@ -183,6 +187,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     green_sec: number;
     cycle_length_sec: number;
     queue_now: number;
+    queue_exact: number;
     predicted_queue_next: number;
     predicted_delay_adaptive_sec: number;
     predicted_delay_fixed_sec: number;
@@ -253,6 +258,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
         green_sec: approach.green,
         cycle_length_sec: solution.cycleLength,
         queue_now: approach.queue,
+        queue_exact: exactQueues.get(approach.roadId) ?? approach.queue,
         predicted_queue_next: predictedNextReading,
         predicted_delay_adaptive_sec: approach.delayAdaptive,
         predicted_delay_fixed_sec: approach.delayFixed,

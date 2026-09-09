@@ -25,11 +25,14 @@ type ModelStateRow = {
   updated_at: string;
 };
 
-/** Deterministic per-road "personality" so each road keeps a familiar range. */
-function baselineFor(roadId: number) {
+/**
+ * Deterministic per-road "personality": how heavily loaded this approach runs
+ * relative to its own capacity (0.5 = half capacity, 1.05 = just over).
+ */
+function loadFor(roadId: number) {
   const seed = Math.sin(roadId * 12.9898) * 43758.5453;
   const frac = seed - Math.floor(seed);
-  return 18 + Math.round(frac * 42); // 18 - 60 vehicles
+  return 0.5 + frac * 0.55;
 }
 
 /** Chennai (UTC+5:30) rush hour shaping of demand. */
@@ -101,10 +104,11 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
       : NOMINAL_TICK_SEC;
     elapsedByRoad.set(road.road_id, elapsed);
 
-    // Demand for this window, in vehicles, with sensor-level noise.
-    // Approach capacity is roughly saturation flow x green share (~450 veh/h),
-    // so demand is scaled to sit either side of that depending on the hour.
-    const demandVph = baselineFor(road.road_id) * 10 * factor;
+    // Demand is expressed against this approach's own capacity (saturation
+    // flow shared across the four phases), so off-peak clears and peak
+    // genuinely oversaturates the junction.
+    const approachCapacity = saturationFlow(road.max_capacity) / 4;
+    const demandVph = approachCapacity * loadFor(road.road_id) * (factor / 1.15);
     const arrivals = ((demandVph * (0.85 + Math.random() * 0.3)) / 3600) * elapsed;
 
     // Discharge achieved by the plan that was running during this window.

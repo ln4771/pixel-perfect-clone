@@ -46,6 +46,8 @@ export type ApproachInput = {
   previousGreen: number;
   /** Previously estimated arrival rate, veh/h. */
   previousArrivalRate: number | null;
+  /** Vehicles counted crossing the detector during the window, if available. */
+  measuredArrivals?: number | null;
   maxCapacity: number;
 };
 
@@ -80,6 +82,15 @@ export type JunctionModel = {
  */
 function estimateArrivalRate(input: ApproachInput, elapsedSec: number) {
   const s = saturationFlow(input.maxCapacity);
+  const prior0 = input.previousArrivalRate;
+
+  // Detector counts are the direct measurement: vehicles crossing the stop
+  // line approach during the window. Queue conservation is the fallback.
+  if (input.measuredArrivals !== null && input.measuredArrivals !== undefined && elapsedSec > 0) {
+    const instant = (input.measuredArrivals * 3600) / elapsedSec;
+    return clamp((prior0 ?? instant) * 0.6 + instant * 0.4, 60, 2600);
+  }
+
   if (input.previousQueue === null || elapsedSec <= 0) {
     // Cold start: assume the observed queue arrived over one nominal cycle.
     return clamp((input.queue * 3600) / FIXED_CYCLE, 60, 2600);

@@ -32,7 +32,7 @@ type ModelStateRow = {
 function loadFor(roadId: number) {
   const seed = Math.sin(roadId * 12.9898) * 43758.5453;
   const frac = seed - Math.floor(seed);
-  return 0.5 + frac * 0.55;
+  return 0.6 + frac * 0.65;
 }
 
 /** Chennai (UTC+5:30) rush hour shaping of demand. */
@@ -104,6 +104,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
   const exactQueues = new Map<number, number>();
   const elapsedByRoad = new Map<number, number>();
   const greenSecondsByRoad = new Map<number, number>();
+  const measuredArrivals = new Map<number, number>();
   const sensorRows: Array<{ road_id: number; vehicle_count: number; source: string }> = [];
 
   for (const road of roadRows) {
@@ -130,6 +131,8 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     const served = Math.min(prior + arrivals, (saturationFlow(road.max_capacity) / 3600) * greenSeconds);
     const exact = clamp(prior + arrivals - served, 0, 150);
     const queue = Math.round(exact);
+    // Detector count for the window, with a little measurement noise.
+    measuredArrivals.set(road.road_id, Math.max(0, Math.round(arrivals * (0.9 + Math.random() * 0.2))));
     exactQueues.set(road.road_id, Number(exact.toFixed(2)));
     queues.set(road.road_id, queue);
     sensorRows.push({ road_id: road.road_id, vehicle_count: queue, source: "SIMULATED_SENSOR" });
@@ -228,6 +231,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
         // Green seconds this approach actually received inside the window.
         previousGreen: greenSecondsByRoad.get(road.road_id) ?? 0,
         previousArrivalRate: state ? Number(state.arrival_rate_vph) : null,
+        measuredArrivals: measuredArrivals.get(road.road_id) ?? null,
         maxCapacity: road.max_capacity,
       };
     });

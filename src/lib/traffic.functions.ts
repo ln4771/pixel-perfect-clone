@@ -69,7 +69,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
   const now = new Date();
   const factor = timeOfDayFactor(now);
 
-  const [{ data: prevCounts }, { data: modelRows }] = await Promise.all([
+  const [{ data: prevCounts }, { data: modelRows }, { data: phaseRows }] = await Promise.all([
     supabaseAdmin
       .from("vehicle_counts")
       .select("road_id, vehicle_count, recorded_at")
@@ -81,7 +81,15 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
       .select(
         "road_id, arrival_rate_vph, green_sec, cycle_length_sec, queue_now, queue_exact, predicted_queue_next, updated_at",
       ),
+    supabaseAdmin.from("signal_timings").select("road_id, is_currently_green"),
   ]);
+
+  // Which approach actually held the green during the window just finished.
+  const wasGreen = new Set<number>(
+    ((phaseRows ?? []) as Array<{ road_id: number; is_currently_green: boolean }>)
+      .filter((row) => row.is_currently_green)
+      .map((row) => row.road_id),
+  );
 
   const previousQueue = new Map<number, number>();
   for (const row of (prevCounts ?? []) as Array<{ road_id: number; vehicle_count: number }>) {
@@ -95,6 +103,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
   const queues = new Map<number, number>();
   const exactQueues = new Map<number, number>();
   const elapsedByRoad = new Map<number, number>();
+  const greenSecondsByRoad = new Map<number, number>();
   const sensorRows: Array<{ road_id: number; vehicle_count: number; source: string }> = [];
 
   for (const road of roadRows) {
@@ -111,11 +120,14 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     const demandVph = approachCapacity * loadFor(road.road_id) * (factor / 1.15);
     const arrivals = ((demandVph * (0.85 + Math.random() * 0.3)) / 3600) * elapsed;
 
-    // Discharge achieved by the plan that was running during this window.
-    const greenShare = state ? state.green_sec / Math.max(state.cycle_length_sec, 1) : FIXED_GREEN / FIXED_CYCLE;
-    const served = (saturationFlow(road.max_capacity) / 3600) * greenShare * elapsed;
-
+    // Discharge only happens while this approach actually holds the green,
+    // and only for as long as its allocated green lasts.
+    const greenSeconds = wasGreen.has(road.road_id)
+      ? Math.min(elapsed, state?.green_sec ?? FIXED_GREEN)
+      : 0;
+    greenSecondsByRoad.set(road.road_id, greenSeconds);
     const prior = state ? Number(state.queue_exact) : (previousQueue.get(road.road_id) ?? arrivals);
+    const served = Math.min(prior + arrivals, (saturationFlow(road.max_capacity) / 3600) * greenSeconds);
     const exact = clamp(prior + arrivals - served, 0, 150);
     const queue = Math.round(exact);
     exactQueues.set(road.road_id, Number(exact.toFixed(2)));
@@ -209,13 +221,12 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
 
     const inputs: ApproachInput[] = junctionRoads.map((road) => {
       const state = stateByRoad.get(road.road_id);
-      const greenShare = state ? state.green_sec / Math.max(state.cycle_length_sec, 1) : FIXED_GREEN / FIXED_CYCLE;
       return {
         roadId: road.road_id,
         queue: queues.get(road.road_id) ?? 0,
-        previousQueue: state ? state.queue_now : (previousQueue.get(road.road_id) ?? null),
-        // Effective green seconds served inside this observation window.
-        previousGreen: greenShare * elapsed,
+        previousQueue: state ? Math.round(Number(state.queue_exact)) : (previousQueue.get(road.road_id) ?? null),
+        // Green seconds this approach actually received inside the window.
+        previousGreen: greenSecondsByRoad.get(road.road_id) ?? 0,
         previousArrivalRate: state ? Number(state.arrival_rate_vph) : null,
         maxCapacity: road.max_capacity,
       };

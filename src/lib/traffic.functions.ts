@@ -155,8 +155,40 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     byJunction.set(road.junction_id, list);
   }
 
-  const historyRows: Array<Record<string, number>> = [];
-  const modelStateRows: Array<Record<string, unknown>> = [];
+  type HistoryRow = {
+    junction_id: number;
+    road_id: number;
+    vehicle_count_at_decision: number;
+    allocated_green_sec: number;
+    baseline_fixed_sec: number;
+    estimated_wait_saved_sec: number;
+    cycle_number: number;
+    arrival_rate_vph: number;
+    saturation_flow_vph: number;
+    degree_saturation: number;
+    predicted_delay_adaptive_sec: number;
+    predicted_delay_fixed_sec: number;
+    predicted_queue_next: number;
+    cycle_length_sec: number;
+  };
+  type ModelStateInsert = {
+    road_id: number;
+    junction_id: number;
+    arrival_rate_vph: number;
+    saturation_flow_vph: number;
+    flow_ratio: number;
+    degree_saturation: number;
+    green_sec: number;
+    cycle_length_sec: number;
+    queue_now: number;
+    predicted_queue_next: number;
+    predicted_delay_adaptive_sec: number;
+    predicted_delay_fixed_sec: number;
+    queue_clears: boolean;
+    updated_at: string;
+  };
+  const historyRows: HistoryRow[] = [];
+  const modelStateRows: ModelStateInsert[] = [];
   const timingUpdates: Array<{ road_id: number; green: number; green_now: boolean }> = [];
 
   for (const [junctionId, junctionRoads] of byJunction) {

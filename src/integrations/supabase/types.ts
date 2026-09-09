@@ -172,6 +172,7 @@ export type Database = {
           predicted_delay_fixed_sec: number
           predicted_queue_next: number
           queue_clears: boolean
+          queue_exact: number
           queue_now: number
           road_id: number
           saturation_flow_vph: number
@@ -188,6 +189,7 @@ export type Database = {
           predicted_delay_fixed_sec?: number
           predicted_queue_next?: number
           queue_clears?: boolean
+          queue_exact?: number
           queue_now?: number
           road_id: number
           saturation_flow_vph?: number
@@ -204,6 +206,7 @@ export type Database = {
           predicted_delay_fixed_sec?: number
           predicted_queue_next?: number
           queue_clears?: boolean
+          queue_exact?: number
           queue_now?: number
           road_id?: number
           saturation_flow_vph?: number

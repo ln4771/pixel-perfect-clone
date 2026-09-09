@@ -100,15 +100,17 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     elapsedByRoad.set(road.road_id, elapsed);
 
     // Demand for this window, in vehicles, with sensor-level noise.
-    const demandVph = baselineFor(road.road_id) * factor * 60; // baseline is a per-minute style load
-    const arrivals = ((demandVph * (0.8 + Math.random() * 0.4)) / 3600) * elapsed;
+    // Approach capacity is roughly saturation flow x green share (~450 veh/h),
+    // so demand is scaled to sit either side of that depending on the hour.
+    const demandVph = baselineFor(road.road_id) * 8 * factor;
+    const arrivals = ((demandVph * (0.85 + Math.random() * 0.3)) / 3600) * elapsed;
 
     // Discharge achieved by the plan that was running during this window.
     const greenShare = state ? state.green_sec / Math.max(state.cycle_length_sec, 1) : FIXED_GREEN / FIXED_CYCLE;
     const served = (saturationFlow(road.max_capacity) / 3600) * greenShare * elapsed;
 
     const prior = previousQueue.get(road.road_id) ?? arrivals;
-    const queue = clamp(Math.round(prior + arrivals - served), 0, 200);
+    const queue = clamp(Math.round(prior + arrivals - served), 0, 150);
     queues.set(road.road_id, queue);
     sensorRows.push({ road_id: road.road_id, vehicle_count: queue, source: "SIMULATED_SENSOR" });
   }
@@ -155,8 +157,40 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     byJunction.set(road.junction_id, list);
   }
 
-  const historyRows: Array<Record<string, number>> = [];
-  const modelStateRows: Array<Record<string, unknown>> = [];
+  type HistoryRow = {
+    junction_id: number;
+    road_id: number;
+    vehicle_count_at_decision: number;
+    allocated_green_sec: number;
+    baseline_fixed_sec: number;
+    estimated_wait_saved_sec: number;
+    cycle_number: number;
+    arrival_rate_vph: number;
+    saturation_flow_vph: number;
+    degree_saturation: number;
+    predicted_delay_adaptive_sec: number;
+    predicted_delay_fixed_sec: number;
+    predicted_queue_next: number;
+    cycle_length_sec: number;
+  };
+  type ModelStateInsert = {
+    road_id: number;
+    junction_id: number;
+    arrival_rate_vph: number;
+    saturation_flow_vph: number;
+    flow_ratio: number;
+    degree_saturation: number;
+    green_sec: number;
+    cycle_length_sec: number;
+    queue_now: number;
+    predicted_queue_next: number;
+    predicted_delay_adaptive_sec: number;
+    predicted_delay_fixed_sec: number;
+    queue_clears: boolean;
+    updated_at: string;
+  };
+  const historyRows: HistoryRow[] = [];
+  const modelStateRows: ModelStateInsert[] = [];
   const timingUpdates: Array<{ road_id: number; green: number; green_now: boolean }> = [];
 
   for (const [junctionId, junctionRoads] of byJunction) {

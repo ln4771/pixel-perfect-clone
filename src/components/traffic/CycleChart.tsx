@@ -1,4 +1,13 @@
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { TrendingDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CyclePoint } from "@/lib/traffic-data";
@@ -23,23 +32,25 @@ export function CycleChart({
     <section className="panel p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Adaptive vs fixed timing</h2>
+          <h2 className="text-lg font-semibold">Predicted waiting time per cycle</h2>
           <p className="text-xs text-muted-foreground">
-            Total green seconds allocated per cycle against a fixed 30s-per-approach plan.
+            Modelled average wait per vehicle under the adaptive plan against the same demand run on
+            a fixed 30s / 120s plan.
           </p>
         </div>
         <span className="flex items-center gap-1.5 rounded-full border border-signal-low/40 bg-signal-low/10 px-3 py-1 text-xs font-medium text-signal-low transition-data">
           <TrendingDown className="h-3.5 w-3.5" />
-          <span className="numeric">{formatSaved(totalSaved)}</span> waiting time saved
+          <span className="numeric">{formatSaved(totalSaved)}</span> vehicle-waiting avoided
         </span>
       </div>
+
 
       <div className="mt-4 h-[240px]">
         {loading ? (
           <Skeleton className="h-full w-full rounded-lg" />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} barGap={2}>
+            <LineChart data={data}>
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="cycle_number"
@@ -54,7 +65,7 @@ export function CycleChart({
                 tick={{ fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
-                width={34}
+                width={38}
                 unit="s"
               />
               <Tooltip
@@ -69,22 +80,27 @@ export function CycleChart({
                 formatter={(value: number, name: string) => [`${value}s`, name]}
               />
               <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-              <Bar
-                dataKey="fixed_sec"
-                name="Fixed baseline"
-                fill="var(--baseline)"
-                radius={[3, 3, 0, 0]}
+              <Line
+                type="monotone"
+                dataKey="delay_fixed"
+                name="Predicted wait — fixed timer"
+                stroke="var(--baseline)"
+                strokeWidth={2}
+                dot={false}
                 animationDuration={350}
               />
-              <Bar
-                dataKey="adaptive_sec"
-                name="Adaptive allocation"
-                fill="var(--primary)"
-                radius={[3, 3, 0, 0]}
+              <Line
+                type="monotone"
+                dataKey="delay_adaptive"
+                name="Predicted wait — model"
+                stroke="var(--primary)"
+                strokeWidth={2}
+                dot={false}
                 animationDuration={350}
               />
-            </BarChart>
+            </LineChart>
           </ResponsiveContainer>
+
         )}
       </div>
     </section>

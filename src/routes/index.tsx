@@ -156,7 +156,6 @@ function Dashboard() {
 
   const roads = roadsQuery.data ?? [];
   const networkVehicles = junctions.reduce((sum, j) => sum + j.total_vehicle_count, 0);
-  const highCount = junctions.filter((j) => j.congestion_level === "HIGH").length;
   const totalJunctions = junctions.length;
   const perf = performanceQuery.data;
   const networkReduction =

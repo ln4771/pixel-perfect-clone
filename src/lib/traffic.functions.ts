@@ -100,15 +100,17 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     elapsedByRoad.set(road.road_id, elapsed);
 
     // Demand for this window, in vehicles, with sensor-level noise.
-    const demandVph = baselineFor(road.road_id) * factor * 60; // baseline is a per-minute style load
-    const arrivals = ((demandVph * (0.8 + Math.random() * 0.4)) / 3600) * elapsed;
+    // Approach capacity is roughly saturation flow x green share (~450 veh/h),
+    // so demand is scaled to sit either side of that depending on the hour.
+    const demandVph = baselineFor(road.road_id) * 8 * factor;
+    const arrivals = ((demandVph * (0.85 + Math.random() * 0.3)) / 3600) * elapsed;
 
     // Discharge achieved by the plan that was running during this window.
     const greenShare = state ? state.green_sec / Math.max(state.cycle_length_sec, 1) : FIXED_GREEN / FIXED_CYCLE;
     const served = (saturationFlow(road.max_capacity) / 3600) * greenShare * elapsed;
 
     const prior = previousQueue.get(road.road_id) ?? arrivals;
-    const queue = clamp(Math.round(prior + arrivals - served), 0, 200);
+    const queue = clamp(Math.round(prior + arrivals - served), 0, 150);
     queues.set(road.road_id, queue);
     sensorRows.push({ road_id: road.road_id, vehicle_count: queue, source: "SIMULATED_SENSOR" });
   }

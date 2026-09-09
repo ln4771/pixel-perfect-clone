@@ -50,7 +50,7 @@ export function CycleChart({
           <Skeleton className="h-full w-full rounded-lg" />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} barGap={2}>
+            <LineChart data={data}>
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="cycle_number"
@@ -65,7 +65,7 @@ export function CycleChart({
                 tick={{ fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
-                width={34}
+                width={38}
                 unit="s"
               />
               <Tooltip
@@ -80,22 +80,27 @@ export function CycleChart({
                 formatter={(value: number, name: string) => [`${value}s`, name]}
               />
               <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-              <Bar
-                dataKey="fixed_sec"
-                name="Fixed baseline"
-                fill="var(--baseline)"
-                radius={[3, 3, 0, 0]}
+              <Line
+                type="monotone"
+                dataKey="delay_fixed"
+                name="Predicted wait — fixed timer"
+                stroke="var(--baseline)"
+                strokeWidth={2}
+                dot={false}
                 animationDuration={350}
               />
-              <Bar
-                dataKey="adaptive_sec"
-                name="Adaptive allocation"
-                fill="var(--primary)"
-                radius={[3, 3, 0, 0]}
+              <Line
+                type="monotone"
+                dataKey="delay_adaptive"
+                name="Predicted wait — model"
+                stroke="var(--primary)"
+                strokeWidth={2}
+                dot={false}
                 animationDuration={350}
               />
-            </BarChart>
+            </LineChart>
           </ResponsiveContainer>
+
         )}
       </div>
     </section>

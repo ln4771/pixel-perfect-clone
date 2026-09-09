@@ -254,12 +254,14 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
 
       // Queue expected at the next control update (used to score the model).
       const nextHorizon = elapsed;
+      const willBeGreen = approach.roadId === greenNowRoad;
+      const dischargeNext = willBeGreen
+        ? (approach.saturationFlowVph / 3600) * Math.min(nextHorizon, approach.green)
+        : 0;
       const predictedNextReading = Math.max(
         0,
         Math.round(
-          approach.queue +
-            (approach.arrivalRateVph / 3600) * nextHorizon -
-            (approach.saturationFlowVph / 3600) * (approach.green / solution.cycleLength) * nextHorizon,
+          approach.queue + (approach.arrivalRateVph / 3600) * nextHorizon - dischargeNext,
         ),
       );
 

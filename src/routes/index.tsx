@@ -10,12 +10,15 @@ import { JunctionList } from "@/components/traffic/JunctionList";
 import { RoadList } from "@/components/traffic/RoadList";
 import { CycleChart } from "@/components/traffic/CycleChart";
 import { CctvPanel } from "@/components/traffic/CctvPanel";
+import { ModelPanel } from "@/components/traffic/ModelPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { runTrafficTick } from "@/lib/traffic.functions";
 import {
   fetchCctvFeed,
   fetchCycleComparison,
+  fetchJunctionModel,
   fetchJunctions,
+  fetchModelPerformance,
   fetchRoadStates,
   fetchTotalSecondsSaved,
   type JunctionSummary,
@@ -97,6 +100,19 @@ function Dashboard() {
     refetchInterval: 6000,
   });
 
+  const modelQuery = useQuery({
+    queryKey: ["model", activeId],
+    queryFn: () => fetchJunctionModel(activeId as number),
+    enabled: isLive,
+    refetchInterval: 6000,
+  });
+
+  const performanceQuery = useQuery({
+    queryKey: ["model-performance"],
+    queryFn: fetchModelPerformance,
+    refetchInterval: 6000,
+  });
+
   const cctvQuery = useQuery({
     queryKey: ["cctv", activeId],
     queryFn: () => fetchCctvFeed(activeId as number),
@@ -142,6 +158,16 @@ function Dashboard() {
   const networkVehicles = junctions.reduce((sum, j) => sum + j.total_vehicle_count, 0);
   const highCount = junctions.filter((j) => j.congestion_level === "HIGH").length;
   const totalJunctions = junctions.length;
+  const perf = performanceQuery.data;
+  const networkReduction =
+    perf && perf.networkDelayFixed > 0
+      ? Math.max(
+          0,
+          Math.round(
+            ((perf.networkDelayFixed - perf.networkDelayAdaptive) / perf.networkDelayFixed) * 100,
+          ),
+        )
+      : 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -191,7 +217,7 @@ function Dashboard() {
                 { label: "Avg / approach", value: selected?.avg_vehicle_count ?? 0, icon: Gauge },
                 { label: "Signals in city", value: totalJunctions, icon: MapPin },
                 { label: "Network vehicles", value: networkVehicles, icon: Car },
-                { label: "Junctions at peak", value: highCount, icon: Activity },
+                { label: "Predicted wait drop", value: `${networkReduction}%`, icon: Activity },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-lg border border-border bg-surface/40 p-3">
                   <p className="meta-label flex items-center gap-1.5">
@@ -211,10 +237,17 @@ function Dashboard() {
           <section className="panel p-4">
             <h2 className="text-lg font-semibold">Approaches & live signal plan</h2>
             <p className="mb-4 text-xs text-muted-foreground">
-              Green time is re-allocated from a 120-second cycle in proportion to live demand.
+              Green time comes from the model: cycle length and splits are solved from the estimated
+              arrival rate and discharge capacity of each approach.
             </p>
             <RoadList roads={roads} loading={roadsQuery.isLoading && isLive} />
           </section>
+
+          <ModelPanel
+            approaches={modelQuery.data ?? []}
+            performance={performanceQuery.data}
+            loading={modelQuery.isLoading && isLive}
+          />
 
           <CycleChart
             data={cyclesQuery.data ?? []}

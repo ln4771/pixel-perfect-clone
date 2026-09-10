@@ -442,6 +442,8 @@ export type Database = {
     Views: {
       v_junction_congestion: {
         Row: {
+          arrival_rate_vph: number | null
+          avg_saturation: number | null
           avg_vehicle_count: number | null
           congestion_level: string | null
           junction_id: number | null
@@ -449,6 +451,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           name: string | null
+          predicted_delay_sec: number | null
           total_vehicle_count: number | null
           zone: string | null
         }

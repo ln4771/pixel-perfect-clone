@@ -32,7 +32,7 @@ type ModelStateRow = {
 function loadFor(roadId: number) {
   const seed = Math.sin(roadId * 12.9898) * 43758.5453;
   const frac = seed - Math.floor(seed);
-  return 0.6 + frac * 0.65;
+  return 0.45 + frac * 0.95;
 }
 
 /** Chennai (UTC+5:30) rush hour shaping of demand. */

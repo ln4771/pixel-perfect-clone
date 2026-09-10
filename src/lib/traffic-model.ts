@@ -24,8 +24,12 @@ export const MAX_CYCLE = 150;
 /** Lost time per phase (startup lag + intergreen clearance), seconds. */
 export const LOST_TIME_PER_PHASE = 4;
 /** Fixed-time reference plan: 30s green inside a 120s cycle. */
-export const FIXED_GREEN = 30;
 export const FIXED_CYCLE = 120;
+/**
+ * A real fixed-time plan must also pay the inter-green lost time, so an equal
+ * four-phase split of a 120 s cycle gives each approach (120 - 4x4)/4 = 26 s.
+ */
+export const FIXED_GREEN = (FIXED_CYCLE - 4 * LOST_TIME_PER_PHASE) / 4;
 
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));

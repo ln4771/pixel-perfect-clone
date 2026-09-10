@@ -309,25 +309,33 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
   // ---- 4. Persist -----------------------------------------------------------
   const { data: timingRows } = await supabaseAdmin
     .from("signal_timings")
-    .select("timing_id, road_id, junction_id");
+    .select("timing_id, road_id, junction_id, is_currently_green, updated_at");
   const timingByRoad = new Map(
-    ((timingRows ?? []) as Array<{ timing_id: number; road_id: number; junction_id: number }>).map(
-      (t) => [t.road_id, t],
-    ),
+    (
+      (timingRows ?? []) as Array<{
+        timing_id: number;
+        road_id: number;
+        junction_id: number;
+        is_currently_green: boolean;
+        updated_at: string;
+      }>
+    ).map((t) => [t.road_id, t]),
   );
   const stamp = now.toISOString();
   const upsertRows = timingUpdates
     .map((update) => {
       const existing = timingByRoad.get(update.road_id);
       if (!existing) return null;
+      // The running phase belongs to advanceSignals(): keep whoever holds the
+      // green and when their phase started, and only refresh the allocation.
       return {
         timing_id: existing.timing_id,
         junction_id: existing.junction_id,
         road_id: update.road_id,
         timing_mode: "ADAPTIVE",
         green_duration_sec: update.green,
-        is_currently_green: update.green_now,
-        updated_at: stamp,
+        is_currently_green: existing.is_currently_green,
+        updated_at: existing.is_currently_green ? existing.updated_at : stamp,
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);

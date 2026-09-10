@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Live adaptive traffic signal control dashboard: junction congestion map, real-time vehicle counts, green-time allocation and CCTV detection feeds.",
+          "Adaptive traffic signal control dashboard for Chennai: junction congestion map, queue model, green-time allocation and detection feeds running on simulated demand.",
       },
       { property: "og:title", content: "Smart Traffic Management — Adaptive Signal Control" },
       {
@@ -237,7 +237,9 @@ function Dashboard() {
             <h2 className="text-lg font-semibold">Approaches & live signal plan</h2>
             <p className="mb-4 text-xs text-muted-foreground">
               Green time comes from the model: cycle length and splits are solved from the estimated
-              arrival rate and discharge capacity of each approach.
+              arrival rate and discharge capacity of each approach. Vehicle readings come from a
+              demand simulator — Chennai has no public sensor feed — while the queue model, timing
+              plan and predictions are real traffic engineering.
             </p>
             <RoadList roads={roads} loading={roadsQuery.isLoading && isLive} />
           </section>

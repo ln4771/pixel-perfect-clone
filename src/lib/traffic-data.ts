@@ -321,3 +321,84 @@ export async function fetchCctvFeed(junctionId: number): Promise<CctvPoint[]> {
     }))
     .reverse();
 }
+
+export type CameraTile = {
+  camera_id: number;
+  camera_name: string;
+  status: string;
+  road_id: number;
+  direction: string;
+  road_name: string | null;
+  frame_number: number;
+  confidence_avg: number;
+  analyzed_at: string | null;
+};
+
+/**
+ * One row per camera at a junction: which approach it watches plus its latest
+ * analysed frame, used to render the camera wall.
+ */
+export async function fetchCameraTiles(junctionId: number): Promise<CameraTile[]> {
+  const { data: roads } = await supabase
+    .from("roads")
+    .select("road_id, direction, road_name")
+    .eq("junction_id", junctionId);
+  const roadRows = (roads ?? []) as Array<{
+    road_id: number;
+    direction: string;
+    road_name: string | null;
+  }>;
+  if (roadRows.length === 0) return [];
+  const roadById = new Map(roadRows.map((r) => [r.road_id, r]));
+
+  const { data: cameras } = await supabase
+    .from("cctv_cameras")
+    .select("camera_id, camera_name, status, road_id")
+    .in(
+      "road_id",
+      roadRows.map((r) => r.road_id),
+    );
+  const cameraRows = (cameras ?? []) as Array<{
+    camera_id: number;
+    camera_name: string | null;
+    status: string;
+    road_id: number;
+  }>;
+  if (cameraRows.length === 0) return [];
+
+  const { data: logs } = await supabase
+    .from("cctv_analysis_log")
+    .select("camera_id, frame_number, confidence_avg, analyzed_at")
+    .in(
+      "camera_id",
+      cameraRows.map((c) => c.camera_id),
+    )
+    .order("analysis_id", { ascending: false })
+    .limit(80);
+
+  const latestByCamera = new Map<number, Record<string, unknown>>();
+  for (const row of (logs ?? []) as Array<Record<string, unknown>>) {
+    const id = Number(row['camera_id']);
+    if (!latestByCamera.has(id)) latestByCamera.set(id, row);
+  }
+
+  return cameraRows
+    .map((camera) => {
+      const road = roadById.get(camera.road_id);
+      const latest = latestByCamera.get(camera.camera_id);
+      return {
+        camera_id: camera.camera_id,
+        camera_name: camera.camera_name ?? `CAM-${camera.camera_id}`,
+        status: camera.status ?? "ONLINE",
+        road_id: camera.road_id,
+        direction: road?.direction ?? "NORTH",
+        road_name: road?.road_name ?? null,
+        frame_number: Number(latest?.['frame_number'] ?? 0),
+        confidence_avg: Number(latest?.['confidence_avg'] ?? 0.9),
+        analyzed_at: (latest?.['analyzed_at'] as string | undefined) ?? null,
+      };
+    })
+    .sort(
+      (a, b) => DIRECTION_ORDER.indexOf(a.direction) - DIRECTION_ORDER.indexOf(b.direction),
+    );
+}

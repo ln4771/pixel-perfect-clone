@@ -12,7 +12,7 @@ import { CycleChart } from "@/components/traffic/CycleChart";
 import { CctvPanel } from "@/components/traffic/CctvPanel";
 import { ModelPanel } from "@/components/traffic/ModelPanel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { runTrafficTick } from "@/lib/traffic.functions";
+import { advanceSignals, runTrafficTick } from "@/lib/traffic.functions";
 import {
   fetchCctvFeed,
   fetchCycleComparison,
@@ -64,9 +64,11 @@ const LEVEL_STYLE: Record<string, string> = {
 function Dashboard() {
   const queryClient = useQueryClient();
   const tick = useServerFn(runTrafficTick);
+  const advance = useServerFn(advanceSignals);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const running = useRef(false);
+  const advancing = useRef(false);
 
   const junctionsQuery = useQuery({
     queryKey: ["junctions"],
@@ -84,7 +86,7 @@ function Dashboard() {
     queryKey: ["roads", activeId],
     queryFn: () => fetchRoadStates(activeId as number),
     enabled: isLive,
-    refetchInterval: 6000,
+    refetchInterval: 2000,
   });
 
   const cyclesQuery = useQuery({
@@ -139,12 +141,35 @@ function Dashboard() {
     }
   }, [tick, refreshAll]);
 
-  // Simulated sensor + control loop: recalculates every 12 seconds.
+  // Simulated sensor + model loop: re-solves the network every 12 seconds.
   useEffect(() => {
     void recalculate();
     const id = window.setInterval(() => void recalculate(), 12000);
     return () => window.clearInterval(id);
   }, [recalculate]);
+
+  // Real-time signal controller: ends and reassigns green phases every 2
+  // seconds using the green times the model currently allocates, so timings
+  // follow congestion live instead of only being predicted.
+  useEffect(() => {
+    const run = async () => {
+      if (advancing.current) return;
+      advancing.current = true;
+      try {
+        const result = (await advance({})) as { switched?: number } | undefined;
+        if (result?.switched) {
+          void queryClient.invalidateQueries({ queryKey: ["roads"] });
+        }
+      } catch (error) {
+        console.error("Signal controller failed", error);
+      } finally {
+        advancing.current = false;
+      }
+    };
+    void run();
+    const id = window.setInterval(() => void run(), 2000);
+    return () => window.clearInterval(id);
+  }, [advance, queryClient]);
 
   const lastUpdated = useMemo(() => {
     const stamps = (junctionsQuery.data ?? [])

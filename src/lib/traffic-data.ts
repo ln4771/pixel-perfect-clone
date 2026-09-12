@@ -25,6 +25,8 @@ export type RoadState = {
   green_duration_sec: number;
   timing_mode: string;
   is_currently_green: boolean;
+  /** When the current phase state started, used for the live green countdown. */
+  phase_started_at: string | null;
 };
 
 export type CyclePoint = {
@@ -114,7 +116,7 @@ export async function fetchRoadStates(junctionId: number): Promise<RoadState[]> 
   const [{ data: timings }, { data: counts }] = await Promise.all([
     supabase
       .from("signal_timings")
-      .select("road_id, green_duration_sec, timing_mode, is_currently_green")
+      .select("road_id, green_duration_sec, timing_mode, is_currently_green, updated_at")
       .in("road_id", roadIds),
     supabase
       .from("vehicle_counts")
@@ -148,6 +150,7 @@ export async function fetchRoadStates(junctionId: number): Promise<RoadState[]> 
         green_duration_sec: Number(timing?.['green_duration_sec'] ?? 30),
         timing_mode: String(timing?.['timing_mode'] ?? "ADAPTIVE"),
         is_currently_green: Boolean(timing?.['is_currently_green'] ?? false),
+        phase_started_at: (timing?.['updated_at'] as string | undefined) ?? null,
       };
     })
     .sort((a, b) => DIRECTION_ORDER.indexOf(a.direction) - DIRECTION_ORDER.indexOf(b.direction));

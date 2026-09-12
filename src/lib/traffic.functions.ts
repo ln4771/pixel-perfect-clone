@@ -413,3 +413,140 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
 
   return { ok: true, cycles: byJunction.size, at: stamp };
 });
+
+// ===========================================================================
+// Real-time phase controller
+// ===========================================================================
+
+type PhaseTiming = {
+  timing_id: number;
+  road_id: number;
+  junction_id: number;
+  green_duration_sec: number;
+  is_currently_green: boolean;
+  updated_at: string;
+};
+
+type PhaseModel = {
+  road_id: number;
+  junction_id: number;
+  green_sec: number;
+  degree_saturation: number;
+  queue_now: number;
+};
+
+/** Minimum seconds a phase must stay green before it can be pre-empted. */
+const MIN_PHASE_SEC = 8;
+/** Never hold a phase longer than this, even under heavy demand. */
+const MAX_PHASE_SEC = 90;
+/**
+ * Extra pressure another approach needs before it pre-empts a running green
+ * that has already served its minimum. Prevents phase flapping.
+ */
+const PREEMPT_MARGIN = 0.25;
+
+/**
+ * Runs the signals in real time: every call checks each junction's running
+ * phase against the green time the model currently allocates it, ends the
+ * phase when its green has been served (or when another approach is under
+ * clearly worse pressure), and hands the green to the approach with the
+ * highest degree of saturation. Called far more often than the model tick, so
+ * green times respond to congestion as it changes rather than once per cycle.
+ */
+export const advanceSignals = createServerFn({ method: "POST" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const [{ data: timingData }, { data: modelData }] = await Promise.all([
+    supabaseAdmin
+      .from("signal_timings")
+      .select("timing_id, road_id, junction_id, green_duration_sec, is_currently_green, updated_at"),
+    supabaseAdmin
+      .from("model_road_state")
+      .select("road_id, junction_id, green_sec, degree_saturation, queue_now"),
+  ]);
+
+  const timings = (timingData ?? []) as PhaseTiming[];
+  if (timings.length === 0) return { ok: true, switched: 0 };
+
+  const modelByRoad = new Map<number, PhaseModel>(
+    ((modelData ?? []) as PhaseModel[]).map((row) => [row.road_id, row]),
+  );
+
+  const byJunction = new Map<number, PhaseTiming[]>();
+  for (const row of timings) {
+    const list = byJunction.get(row.junction_id);
+    if (list) list.push(row);
+    else byJunction.set(row.junction_id, [row]);
+  }
+
+  const now = Date.now();
+  const stamp = new Date(now).toISOString();
+  const updates: Array<PhaseTiming & { timing_mode: string }> = [];
+
+  /** Pressure = how far past capacity this approach is running right now. */
+  const pressure = (roadId: number) => {
+    const model = modelByRoad.get(roadId);
+    if (!model) return 0;
+    return Number(model.degree_saturation) + Number(model.queue_now) / 200;
+  };
+
+  for (const [, approaches] of byJunction) {
+    const sorted = [...approaches].sort((a, b) => a.road_id - b.road_id);
+    const current = sorted.find((row) => row.is_currently_green);
+    const elapsed = current ? (now - new Date(current.updated_at).getTime()) / 1000 : Infinity;
+
+    const allocated = current
+      ? clamp(
+          Number(modelByRoad.get(current.road_id)?.green_sec ?? current.green_duration_sec),
+          MIN_PHASE_SEC,
+          MAX_PHASE_SEC,
+        )
+      : 0;
+
+    // Best challenger: worst pressure among the approaches waiting on red.
+    let challenger: PhaseTiming | null = null;
+    let challengerPressure = -1;
+    for (const row of sorted) {
+      if (current && row.road_id === current.road_id) continue;
+      const p = pressure(row.road_id);
+      if (p > challengerPressure) {
+        challengerPressure = p;
+        challenger = row;
+      }
+    }
+
+    const servedGreen = elapsed >= allocated;
+    const preempted =
+      !!current &&
+      elapsed >= MIN_PHASE_SEC &&
+      challengerPressure > pressure(current.road_id) + PREEMPT_MARGIN;
+
+    if (current && !servedGreen && !preempted) continue;
+    if (!challenger) continue;
+
+    const nextGreen = clamp(
+      Number(modelByRoad.get(challenger.road_id)?.green_sec ?? challenger.green_duration_sec),
+      MIN_PHASE_SEC,
+      MAX_PHASE_SEC,
+    );
+
+    if (current) {
+      updates.push({ ...current, timing_mode: "ADAPTIVE", is_currently_green: false, updated_at: stamp });
+    }
+    updates.push({
+      ...challenger,
+      timing_mode: "ADAPTIVE",
+      green_duration_sec: Math.round(nextGreen),
+      is_currently_green: true,
+      updated_at: stamp,
+    });
+  }
+
+  for (let i = 0; i < updates.length; i += 200) {
+    await supabaseAdmin
+      .from("signal_timings")
+      .upsert(updates.slice(i, i + 200), { onConflict: "timing_id" });
+  }
+
+  return { ok: true, switched: updates.length, at: stamp };
+});

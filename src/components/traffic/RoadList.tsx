@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, Radio } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { RoadState } from "@/lib/traffic-data";
@@ -15,7 +16,19 @@ function congestionBar(count: number, capacity: number) {
   return { pct, tone };
 }
 
+/** Ticking clock so the running green phase counts down smoothly. */
+function useSecondsClock() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return now;
+}
+
 export function RoadList({ roads, loading }: { roads: RoadState[]; loading: boolean }) {
+  const now = useSecondsClock();
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -40,6 +53,12 @@ export function RoadList({ roads, loading }: { roads: RoadState[]; loading: bool
         const Icon = DIRECTION_ICON[road.direction as keyof typeof DIRECTION_ICON] ?? Radio;
         const { pct, tone } = congestionBar(road.vehicle_count, road.max_capacity);
         const greenPct = Math.min(100, Math.round((road.green_duration_sec / 90) * 100));
+        const elapsed = road.phase_started_at
+          ? Math.max(0, Math.floor((now - new Date(road.phase_started_at).getTime()) / 1000))
+          : 0;
+        const remaining = road.is_currently_green
+          ? Math.max(0, road.green_duration_sec - elapsed)
+          : null;
         return (
           <div
             key={road.road_id}
@@ -92,17 +111,30 @@ export function RoadList({ roads, loading }: { roads: RoadState[]; loading: bool
                 </div>
               </div>
               <div>
-                <p className="meta-label">Green time</p>
+                <p className="meta-label">
+                  {remaining !== null ? "Green now" : "Next green"}
+                </p>
                 <p className="numeric text-xl text-primary transition-data">
                   {road.green_duration_sec}
                   <span className="ml-0.5 text-xs text-muted-foreground">s</span>
                 </p>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-primary transition-data"
-                    style={{ width: `${greenPct}%` }}
+                    className={`h-full rounded-full transition-data ${
+                      remaining !== null ? "bg-signal-low" : "bg-primary"
+                    }`}
+                    style={{
+                      width: `${
+                        remaining !== null
+                          ? Math.round((remaining / Math.max(road.green_duration_sec, 1)) * 100)
+                          : greenPct
+                      }%`,
+                    }}
                   />
                 </div>
+                {remaining !== null ? (
+                  <p className="mt-1 numeric text-[11px] text-signal-low">{remaining}s remaining</p>
+                ) : null}
               </div>
             </div>
 

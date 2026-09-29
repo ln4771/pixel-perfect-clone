@@ -40,7 +40,10 @@ export function MapPanel({ junctions, selectedId, onSelect, loading }: Props) {
           { label: "Moderate", cls: "bg-signal-moderate" },
           { label: "High", cls: "bg-signal-high" },
         ].map((item) => (
-          <span key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span
+            key={item.label}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground"
+          >
             <span className={`h-2 w-2 rounded-full ${item.cls}`} />
             {item.label}
           </span>

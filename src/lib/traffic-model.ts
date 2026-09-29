@@ -185,7 +185,7 @@ export function solveJunction(inputs: ApproachInput[], elapsedSec: number): Junc
       Math.round(b.input.queue + arrivalsPerCycle - dischargeCapacity),
     );
     const capacity = (b.saturationFlowVph / 3600) * (green / cycleLength);
-    const degreeSaturation = capacity > 0 ? (b.arrivalRateVph / 3600) / capacity : 2;
+    const degreeSaturation = capacity > 0 ? b.arrivalRateVph / 3600 / capacity : 2;
 
     return {
       roadId: b.input.roadId,

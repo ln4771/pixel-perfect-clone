@@ -1,4 +1,12 @@
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Video } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CctvPoint } from "@/lib/traffic-data";

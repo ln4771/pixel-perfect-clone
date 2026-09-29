@@ -79,9 +79,7 @@ function CameraTileView({
         </span>
         <span
           className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-            green
-              ? "bg-signal-low/15 text-signal-low"
-              : "bg-signal-high/15 text-signal-high"
+            green ? "bg-signal-low/15 text-signal-low" : "bg-signal-high/15 text-signal-high"
           }`}
         >
           {camera.direction} · {green ? "green" : "red"}
@@ -95,8 +93,12 @@ function CameraTileView({
             <span className="text-[11px]">Signal lost</span>
           </div>
         ) : (
-          <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" role="img"
-            aria-label={`${camera.direction} approach camera view with ${queue} vehicles detected`}>
+          <svg
+            viewBox="0 0 100 100"
+            className="absolute inset-0 h-full w-full"
+            role="img"
+            aria-label={`${camera.direction} approach camera view with ${queue} vehicles detected`}
+          >
             {/* road surface */}
             <rect x="0" y="0" width="100" height="100" fill="oklch(0.22 0.005 285)" />
             <rect x="4" y="0" width="92" height="100" fill="oklch(0.26 0.004 285)" />

@@ -109,7 +109,7 @@ export function JunctionList({ junctions, selectedId, onSelect, loading }: Props
                   }`}
                 >
                   <span
-                    className={`h-2 w-2 shrink-0 rounded-full ${DOT[junction.congestion_level] ?? DOT['LOW']}`}
+                    className={`h-2 w-2 shrink-0 rounded-full ${DOT[junction.congestion_level] ?? DOT["LOW"]}`}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-medium">{junction.name}</span>
@@ -120,7 +120,9 @@ export function JunctionList({ junctions, selectedId, onSelect, loading }: Props
               );
             })}
         {!loading && filtered.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">No signals match those filters.</p>
+          <p className="py-6 text-center text-xs text-muted-foreground">
+            No signals match those filters.
+          </p>
         ) : null}
       </div>
     </div>

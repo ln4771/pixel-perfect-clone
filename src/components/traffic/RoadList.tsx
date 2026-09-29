@@ -107,13 +107,14 @@ export function RoadList({ roads, loading }: { roads: RoadState[]; loading: bool
                 <p className="meta-label">Vehicles</p>
                 <p className="numeric text-xl transition-data">{road.vehicle_count}</p>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className={`h-full rounded-full transition-data ${tone}`} style={{ width: `${pct}%` }} />
+                  <div
+                    className={`h-full rounded-full transition-data ${tone}`}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
               </div>
               <div>
-                <p className="meta-label">
-                  {remaining !== null ? "Green now" : "Next green"}
-                </p>
+                <p className="meta-label">{remaining !== null ? "Green now" : "Next green"}</p>
                 <p className="numeric text-xl text-primary transition-data">
                   {road.green_duration_sec}
                   <span className="ml-0.5 text-xs text-muted-foreground">s</span>

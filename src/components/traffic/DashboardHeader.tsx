@@ -36,7 +36,6 @@ export function DashboardHeader({
         >
           Simulated demand
         </span>
-
       </div>
 
       <div className="flex items-center gap-3">

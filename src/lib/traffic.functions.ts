@@ -128,11 +128,17 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
       : 0;
     greenSecondsByRoad.set(road.road_id, greenSeconds);
     const prior = state ? Number(state.queue_exact) : (previousQueue.get(road.road_id) ?? arrivals);
-    const served = Math.min(prior + arrivals, (saturationFlow(road.max_capacity) / 3600) * greenSeconds);
+    const served = Math.min(
+      prior + arrivals,
+      (saturationFlow(road.max_capacity) / 3600) * greenSeconds,
+    );
     const exact = clamp(prior + arrivals - served, 0, 150);
     const queue = Math.round(exact);
     // Detector count for the window, with a little measurement noise.
-    measuredArrivals.set(road.road_id, Math.max(0, Math.round(arrivals * (0.9 + Math.random() * 0.2))));
+    measuredArrivals.set(
+      road.road_id,
+      Math.max(0, Math.round(arrivals * (0.9 + Math.random() * 0.2))),
+    );
     exactQueues.set(road.road_id, Number(exact.toFixed(2)));
     queues.set(road.road_id, queue);
     sensorRows.push({ road_id: road.road_id, vehicle_count: queue, source: "SIMULATED_SENSOR" });
@@ -170,7 +176,8 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
   const cycleByJunction = new Map<number, number>();
   for (const row of (lastCycles ?? []) as Array<{ junction_id: number; cycle_number: number }>) {
     const current = cycleByJunction.get(row.junction_id) ?? 0;
-    if ((row.cycle_number ?? 0) > current) cycleByJunction.set(row.junction_id, row.cycle_number ?? 0);
+    if ((row.cycle_number ?? 0) > current)
+      cycleByJunction.set(row.junction_id, row.cycle_number ?? 0);
   }
 
   const byJunction = new Map<number, RoadRow[]>();
@@ -219,15 +226,19 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
 
   for (const [junctionId, junctionRoads] of byJunction) {
     const elapsed =
-      junctionRoads.reduce((sum, r) => sum + (elapsedByRoad.get(r.road_id) ?? NOMINAL_TICK_SEC), 0) /
-      junctionRoads.length;
+      junctionRoads.reduce(
+        (sum, r) => sum + (elapsedByRoad.get(r.road_id) ?? NOMINAL_TICK_SEC),
+        0,
+      ) / junctionRoads.length;
 
     const inputs: ApproachInput[] = junctionRoads.map((road) => {
       const state = stateByRoad.get(road.road_id);
       return {
         roadId: road.road_id,
         queue: queues.get(road.road_id) ?? 0,
-        previousQueue: state ? Math.round(Number(state.queue_exact)) : (previousQueue.get(road.road_id) ?? null),
+        previousQueue: state
+          ? Math.round(Number(state.queue_exact))
+          : (previousQueue.get(road.road_id) ?? null),
         // Green seconds this approach actually received inside the window.
         previousGreen: greenSecondsByRoad.get(road.road_id) ?? 0,
         previousArrivalRate: state ? Number(state.arrival_rate_vph) : null,
@@ -264,9 +275,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
         : 0;
       const predictedNextReading = Math.max(
         0,
-        Math.round(
-          approach.queue + (approach.arrivalRateVph / 3600) * nextHorizon - dischargeNext,
-        ),
+        Math.round(approach.queue + (approach.arrivalRateVph / 3600) * nextHorizon - dischargeNext),
       );
 
       modelStateRows.push({
@@ -340,7 +349,7 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
 
-  const chunk = <T,>(rows: T[], size = 200) => {
+  const chunk = <T>(rows: T[], size = 200) => {
     const out: T[][] = [];
     for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
     return out;
@@ -378,7 +387,8 @@ export const runTrafficTick = createServerFn({ method: "POST" }).handler(async (
       .limit(200);
     const frameByCamera = new Map<number, number>();
     for (const row of (lastFrames ?? []) as Array<{ camera_id: number; frame_number: number }>) {
-      if (!frameByCamera.has(row.camera_id)) frameByCamera.set(row.camera_id, row.frame_number ?? 0);
+      if (!frameByCamera.has(row.camera_id))
+        frameByCamera.set(row.camera_id, row.frame_number ?? 0);
     }
 
     const analysisRows: Array<{
@@ -459,7 +469,9 @@ export const advanceSignals = createServerFn({ method: "POST" }).handler(async (
   const [{ data: timingData }, { data: modelData }] = await Promise.all([
     supabaseAdmin
       .from("signal_timings")
-      .select("timing_id, road_id, junction_id, green_duration_sec, is_currently_green, updated_at"),
+      .select(
+        "timing_id, road_id, junction_id, green_duration_sec, is_currently_green, updated_at",
+      ),
     supabaseAdmin
       .from("model_road_state")
       .select("road_id, junction_id, green_sec, degree_saturation, queue_now"),
@@ -531,7 +543,12 @@ export const advanceSignals = createServerFn({ method: "POST" }).handler(async (
     );
 
     if (current) {
-      updates.push({ ...current, timing_mode: "ADAPTIVE", is_currently_green: false, updated_at: stamp });
+      updates.push({
+        ...current,
+        timing_mode: "ADAPTIVE",
+        is_currently_green: false,
+        updated_at: stamp,
+      });
     }
     updates.push({
       ...challenger,

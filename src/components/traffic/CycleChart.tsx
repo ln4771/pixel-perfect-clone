@@ -44,7 +44,6 @@ export function CycleChart({
         </span>
       </div>
 
-
       <div className="mt-4 h-[240px]">
         {loading ? (
           <Skeleton className="h-full w-full rounded-lg" />
@@ -100,7 +99,6 @@ export function CycleChart({
               />
             </LineChart>
           </ResponsiveContainer>
-
         )}
       </div>
     </section>

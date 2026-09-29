@@ -68,7 +68,6 @@ export type ModelPerformance = {
   saturatedApproaches: number;
 };
 
-
 export type CctvPoint = {
   frame_number: number;
   vehicles_detected: number;
@@ -86,15 +85,15 @@ export async function fetchJunctions(): Promise<JunctionSummary[]> {
     .order("junction_id");
   if (error) throw new Error(error.message);
   return (data ?? []).map((row: Record<string, unknown>) => ({
-    junction_id: Number(row['junction_id']),
-    name: String(row['name']),
-    zone: String(row['zone'] ?? "Central"),
-    latitude: Number(row['latitude']),
-    longitude: Number(row['longitude']),
-    avg_vehicle_count: Number(row['avg_vehicle_count'] ?? 0),
-    total_vehicle_count: Number(row['total_vehicle_count'] ?? 0),
-    congestion_level: (row['congestion_level'] as CongestionLevel) ?? "LOW",
-    last_reading_at: (row['last_reading_at'] as string | null) ?? null,
+    junction_id: Number(row["junction_id"]),
+    name: String(row["name"]),
+    zone: String(row["zone"] ?? "Central"),
+    latitude: Number(row["latitude"]),
+    longitude: Number(row["longitude"]),
+    avg_vehicle_count: Number(row["avg_vehicle_count"] ?? 0),
+    total_vehicle_count: Number(row["total_vehicle_count"] ?? 0),
+    congestion_level: (row["congestion_level"] as CongestionLevel) ?? "LOW",
+    last_reading_at: (row["last_reading_at"] as string | null) ?? null,
   }));
 }
 
@@ -127,11 +126,11 @@ export async function fetchRoadStates(junctionId: number): Promise<RoadState[]> 
   ]);
 
   const timingByRoad = new Map(
-    ((timings ?? []) as Array<Record<string, unknown>>).map((t) => [Number(t['road_id']), t]),
+    ((timings ?? []) as Array<Record<string, unknown>>).map((t) => [Number(t["road_id"]), t]),
   );
   const latestByRoad = new Map<number, Record<string, unknown>>();
   for (const row of (counts ?? []) as Array<Record<string, unknown>>) {
-    const id = Number(row['road_id']);
+    const id = Number(row["road_id"]);
     if (!latestByRoad.has(id)) latestByRoad.set(id, row);
   }
 
@@ -144,13 +143,13 @@ export async function fetchRoadStates(junctionId: number): Promise<RoadState[]> 
         direction: road.direction,
         road_name: road.road_name,
         max_capacity: road.max_capacity,
-        vehicle_count: Number(latest?.['vehicle_count'] ?? 0),
-        source: String(latest?.['source'] ?? "SIMULATED_SENSOR"),
-        recorded_at: (latest?.['recorded_at'] as string | undefined) ?? null,
-        green_duration_sec: Number(timing?.['green_duration_sec'] ?? 30),
-        timing_mode: String(timing?.['timing_mode'] ?? "ADAPTIVE"),
-        is_currently_green: Boolean(timing?.['is_currently_green'] ?? false),
-        phase_started_at: (timing?.['updated_at'] as string | undefined) ?? null,
+        vehicle_count: Number(latest?.["vehicle_count"] ?? 0),
+        source: String(latest?.["source"] ?? "SIMULATED_SENSOR"),
+        recorded_at: (latest?.["recorded_at"] as string | undefined) ?? null,
+        green_duration_sec: Number(timing?.["green_duration_sec"] ?? 30),
+        timing_mode: String(timing?.["timing_mode"] ?? "ADAPTIVE"),
+        is_currently_green: Boolean(timing?.["is_currently_green"] ?? false),
+        phase_started_at: (timing?.["updated_at"] as string | undefined) ?? null,
       };
     })
     .sort((a, b) => DIRECTION_ORDER.indexOf(a.direction) - DIRECTION_ORDER.indexOf(b.direction));
@@ -169,7 +168,7 @@ export async function fetchCycleComparison(junctionId: number): Promise<CyclePoi
 
   const byCycle = new Map<number, CyclePoint & { n: number }>();
   for (const row of (data ?? []) as Array<Record<string, number>>) {
-    const cycle = Number(row['cycle_number'] ?? 0);
+    const cycle = Number(row["cycle_number"] ?? 0);
     const point = byCycle.get(cycle) ?? {
       cycle_number: cycle,
       adaptive_sec: 0,
@@ -179,11 +178,11 @@ export async function fetchCycleComparison(junctionId: number): Promise<CyclePoi
       delay_fixed: 0,
       n: 0,
     };
-    point.adaptive_sec += Number(row['allocated_green_sec'] ?? 0);
-    point.fixed_sec += Number(row['baseline_fixed_sec'] ?? 30);
-    point.saved_sec += Number(row['estimated_wait_saved_sec'] ?? 0);
-    point.delay_adaptive += Number(row['predicted_delay_adaptive_sec'] ?? 0);
-    point.delay_fixed += Number(row['predicted_delay_fixed_sec'] ?? 0);
+    point.adaptive_sec += Number(row["allocated_green_sec"] ?? 0);
+    point.fixed_sec += Number(row["baseline_fixed_sec"] ?? 30);
+    point.saved_sec += Number(row["estimated_wait_saved_sec"] ?? 0);
+    point.delay_adaptive += Number(row["predicted_delay_adaptive_sec"] ?? 0);
+    point.delay_fixed += Number(row["predicted_delay_fixed_sec"] ?? 0);
     point.n += 1;
     byCycle.set(cycle, point);
   }
@@ -213,18 +212,18 @@ export async function fetchJunctionModel(junctionId: number): Promise<ApproachMo
 
   return ((state ?? []) as Array<Record<string, unknown>>)
     .map((row) => ({
-      road_id: Number(row['road_id']),
-      direction: dirByRoad.get(Number(row['road_id'])) ?? "—",
-      arrival_rate_vph: Number(row['arrival_rate_vph'] ?? 0),
-      saturation_flow_vph: Number(row['saturation_flow_vph'] ?? 0),
-      degree_saturation: Number(row['degree_saturation'] ?? 0),
-      green_sec: Number(row['green_sec'] ?? 0),
-      cycle_length_sec: Number(row['cycle_length_sec'] ?? 0),
-      queue_now: Number(row['queue_now'] ?? 0),
-      predicted_queue_next: Number(row['predicted_queue_next'] ?? 0),
-      predicted_delay_adaptive_sec: Number(row['predicted_delay_adaptive_sec'] ?? 0),
-      predicted_delay_fixed_sec: Number(row['predicted_delay_fixed_sec'] ?? 0),
-      queue_clears: Boolean(row['queue_clears']),
+      road_id: Number(row["road_id"]),
+      direction: dirByRoad.get(Number(row["road_id"])) ?? "—",
+      arrival_rate_vph: Number(row["arrival_rate_vph"] ?? 0),
+      saturation_flow_vph: Number(row["saturation_flow_vph"] ?? 0),
+      degree_saturation: Number(row["degree_saturation"] ?? 0),
+      green_sec: Number(row["green_sec"] ?? 0),
+      cycle_length_sec: Number(row["cycle_length_sec"] ?? 0),
+      queue_now: Number(row["queue_now"] ?? 0),
+      predicted_queue_next: Number(row["predicted_queue_next"] ?? 0),
+      predicted_delay_adaptive_sec: Number(row["predicted_delay_adaptive_sec"] ?? 0),
+      predicted_delay_fixed_sec: Number(row["predicted_delay_fixed_sec"] ?? 0),
+      queue_clears: Boolean(row["queue_clears"]),
     }))
     .sort((a, b) => DIRECTION_ORDER.indexOf(a.direction) - DIRECTION_ORDER.indexOf(b.direction));
 }
@@ -256,11 +255,11 @@ export async function fetchModelPerformance(): Promise<ModelPerformance> {
   let fixed = 0;
   let saturated = 0;
   for (const row of rows) {
-    const w = Number(row['arrival_rate_vph'] ?? 0);
+    const w = Number(row["arrival_rate_vph"] ?? 0);
     flow += w;
-    adaptive += Number(row['predicted_delay_adaptive_sec'] ?? 0) * w;
-    fixed += Number(row['predicted_delay_fixed_sec'] ?? 0) * w;
-    if (Number(row['degree_saturation'] ?? 0) > 1) saturated += 1;
+    adaptive += Number(row["predicted_delay_adaptive_sec"] ?? 0) * w;
+    fixed += Number(row["predicted_delay_fixed_sec"] ?? 0) * w;
+    if (Number(row["degree_saturation"] ?? 0) > 1) saturated += 1;
   }
 
   return {
@@ -272,7 +271,6 @@ export async function fetchModelPerformance(): Promise<ModelPerformance> {
     saturatedApproaches: saturated,
   };
 }
-
 
 export async function fetchTotalSecondsSaved(): Promise<number> {
   const { data, error } = await supabase
@@ -288,7 +286,10 @@ export async function fetchTotalSecondsSaved(): Promise<number> {
 }
 
 export async function fetchCctvFeed(junctionId: number): Promise<CctvPoint[]> {
-  const { data: roads } = await supabase.from("roads").select("road_id").eq("junction_id", junctionId);
+  const { data: roads } = await supabase
+    .from("roads")
+    .select("road_id")
+    .eq("junction_id", junctionId);
   const roadIds = ((roads ?? []) as Array<{ road_id: number }>).map((r) => r.road_id);
   if (roadIds.length === 0) return [];
 
@@ -298,7 +299,9 @@ export async function fetchCctvFeed(junctionId: number): Promise<CctvPoint[]> {
     .in("road_id", roadIds);
   const cameraRows = (cameras ?? []) as Array<{ camera_id: number; camera_name: string | null }>;
   if (cameraRows.length === 0) return [];
-  const nameById = new Map(cameraRows.map((c) => [c.camera_id, c.camera_name ?? `CAM-${c.camera_id}`]));
+  const nameById = new Map(
+    cameraRows.map((c) => [c.camera_id, c.camera_name ?? `CAM-${c.camera_id}`]),
+  );
 
   const { data, error } = await supabase
     .from("cctv_analysis_log")
@@ -313,11 +316,11 @@ export async function fetchCctvFeed(junctionId: number): Promise<CctvPoint[]> {
 
   return ((data ?? []) as Array<Record<string, unknown>>)
     .map((row) => ({
-      frame_number: Number(row['frame_number'] ?? 0),
-      vehicles_detected: Number(row['vehicles_detected'] ?? 0),
-      confidence_avg: Number(row['confidence_avg'] ?? 0),
-      camera_name: nameById.get(Number(row['camera_id'])) ?? "CAM",
-      analyzed_at: String(row['analyzed_at']),
+      frame_number: Number(row["frame_number"] ?? 0),
+      vehicles_detected: Number(row["vehicles_detected"] ?? 0),
+      confidence_avg: Number(row["confidence_avg"] ?? 0),
+      camera_name: nameById.get(Number(row["camera_id"])) ?? "CAM",
+      analyzed_at: String(row["analyzed_at"]),
     }))
     .reverse();
 }
@@ -378,7 +381,7 @@ export async function fetchCameraTiles(junctionId: number): Promise<CameraTile[]
 
   const latestByCamera = new Map<number, Record<string, unknown>>();
   for (const row of (logs ?? []) as Array<Record<string, unknown>>) {
-    const id = Number(row['camera_id']);
+    const id = Number(row["camera_id"]);
     if (!latestByCamera.has(id)) latestByCamera.set(id, row);
   }
 
@@ -393,12 +396,10 @@ export async function fetchCameraTiles(junctionId: number): Promise<CameraTile[]
         road_id: camera.road_id,
         direction: road?.direction ?? "NORTH",
         road_name: road?.road_name ?? null,
-        frame_number: Number(latest?.['frame_number'] ?? 0),
-        confidence_avg: Number(latest?.['confidence_avg'] ?? 0.9),
-        analyzed_at: (latest?.['analyzed_at'] as string | undefined) ?? null,
+        frame_number: Number(latest?.["frame_number"] ?? 0),
+        confidence_avg: Number(latest?.["confidence_avg"] ?? 0.9),
+        analyzed_at: (latest?.["analyzed_at"] as string | undefined) ?? null,
       };
     })
-    .sort(
-      (a, b) => DIRECTION_ORDER.indexOf(a.direction) - DIRECTION_ORDER.indexOf(b.direction),
-    );
+    .sort((a, b) => DIRECTION_ORDER.indexOf(a.direction) - DIRECTION_ORDER.indexOf(b.direction));
 }

@@ -48,11 +48,61 @@ export const Route = createFileRoute("/")({
 
 /** Shown only if the backend is briefly unreachable, so the UI never looks dead. */
 const FALLBACK_JUNCTIONS: JunctionSummary[] = [
-  { junction_id: -1, name: "Tambaram Junction", zone: "GST Corridor", latitude: 12.9249, longitude: 80.1, avg_vehicle_count: 52, total_vehicle_count: 208, congestion_level: "MODERATE", last_reading_at: null },
-  { junction_id: -2, name: "Vandalur Junction", zone: "GST Corridor", latitude: 12.893, longitude: 80.081, avg_vehicle_count: 68, total_vehicle_count: 272, congestion_level: "HIGH", last_reading_at: null },
-  { junction_id: -3, name: "Chengalpattu Bypass Junction", zone: "GST Corridor", latitude: 12.692, longitude: 79.977, avg_vehicle_count: 24, total_vehicle_count: 96, congestion_level: "LOW", last_reading_at: null },
-  { junction_id: -4, name: "SRM Main Gate Junction", zone: "GST Corridor", latitude: 12.823, longitude: 80.045, avg_vehicle_count: 41, total_vehicle_count: 164, congestion_level: "MODERATE", last_reading_at: null },
-  { junction_id: -5, name: "Guduvancheri Junction", zone: "GST Corridor", latitude: 12.842, longitude: 80.06, avg_vehicle_count: 33, total_vehicle_count: 132, congestion_level: "MODERATE", last_reading_at: null },
+  {
+    junction_id: -1,
+    name: "Tambaram Junction",
+    zone: "GST Corridor",
+    latitude: 12.9249,
+    longitude: 80.1,
+    avg_vehicle_count: 52,
+    total_vehicle_count: 208,
+    congestion_level: "MODERATE",
+    last_reading_at: null,
+  },
+  {
+    junction_id: -2,
+    name: "Vandalur Junction",
+    zone: "GST Corridor",
+    latitude: 12.893,
+    longitude: 80.081,
+    avg_vehicle_count: 68,
+    total_vehicle_count: 272,
+    congestion_level: "HIGH",
+    last_reading_at: null,
+  },
+  {
+    junction_id: -3,
+    name: "Chengalpattu Bypass Junction",
+    zone: "GST Corridor",
+    latitude: 12.692,
+    longitude: 79.977,
+    avg_vehicle_count: 24,
+    total_vehicle_count: 96,
+    congestion_level: "LOW",
+    last_reading_at: null,
+  },
+  {
+    junction_id: -4,
+    name: "SRM Main Gate Junction",
+    zone: "GST Corridor",
+    latitude: 12.823,
+    longitude: 80.045,
+    avg_vehicle_count: 41,
+    total_vehicle_count: 164,
+    congestion_level: "MODERATE",
+    last_reading_at: null,
+  },
+  {
+    junction_id: -5,
+    name: "Guduvancheri Junction",
+    zone: "GST Corridor",
+    latitude: 12.842,
+    longitude: 80.06,
+    avg_vehicle_count: 33,
+    total_vehicle_count: 132,
+    congestion_level: "MODERATE",
+    last_reading_at: null,
+  },
 ];
 
 const LEVEL_STYLE: Record<string, string> = {
@@ -77,7 +127,9 @@ function Dashboard() {
   });
 
   const junctions =
-    junctionsQuery.data && junctionsQuery.data.length > 0 ? junctionsQuery.data : FALLBACK_JUNCTIONS;
+    junctionsQuery.data && junctionsQuery.data.length > 0
+      ? junctionsQuery.data
+      : FALLBACK_JUNCTIONS;
   const activeId = selectedId ?? junctions[0]?.junction_id ?? null;
   const selected = junctions.find((j) => j.junction_id === activeId) ?? junctions[0];
   const isLive = activeId !== null && activeId > 0;
@@ -195,7 +247,11 @@ function Dashboard() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <DashboardHeader lastUpdated={lastUpdated} onRecalculate={() => void recalculate()} busy={busy} />
+      <DashboardHeader
+        lastUpdated={lastUpdated}
+        onRecalculate={() => void recalculate()}
+        busy={busy}
+      />
 
       <div className="grid flex-1 gap-4 p-4 md:px-6 lg:grid-cols-[260px_1.2fr_1fr] lg:gap-0 lg:p-0">
         <div className="lg:h-[calc(100vh-65px)] lg:sticky lg:top-[65px] lg:border-r lg:border-border lg:p-3">

@@ -1,6 +1,13 @@
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
-import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  TileLayer,
+  Tooltip,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import L from "leaflet";
 import type { JunctionSummary } from "@/lib/traffic-data";
 
@@ -22,7 +29,9 @@ function FitToNetwork({ junctions }: { junctions: JunctionSummary[] }) {
   const [done, setDone] = useState(false);
   useEffect(() => {
     if (done || junctions.length === 0) return;
-    const bounds = L.latLngBounds(junctions.map((j) => [j.latitude, j.longitude] as [number, number]));
+    const bounds = L.latLngBounds(
+      junctions.map((j) => [j.latitude, j.longitude] as [number, number]),
+    );
     map.fitBounds(bounds, { padding: [32, 32] });
     setDone(true);
   }, [junctions, map, done]);
@@ -54,7 +63,7 @@ export default function JunctionMap({ junctions, selectedId, onSelect }: Props) 
       <FitToNetwork junctions={junctions} />
       <ZoomWatcher onZoom={setZoom} />
       {junctions.map((junction) => {
-        const color = LEVEL_COLOR[junction.congestion_level] ?? LEVEL_COLOR['LOW'];
+        const color = LEVEL_COLOR[junction.congestion_level] ?? LEVEL_COLOR["LOW"];
         const selected = junction.junction_id === selectedId;
         // Volume drives size, zoom keeps dense corridors readable.
         const load = Math.min(1, junction.avg_vehicle_count / 80);
